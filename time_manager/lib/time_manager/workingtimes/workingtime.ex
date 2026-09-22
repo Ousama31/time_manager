@@ -1,0 +1,20 @@
+defmodule TimeManager.Workingtimes.Workingtime do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  schema "workingtime" do
+    field :start, :utc_datetime
+    field :end, :utc_datetime
+    field :user_id, :id
+
+    timestamps(type: :utc_datetime)
+  end
+
+  #upddate the changeset function to include user_id as a required field
+  @doc false
+  def changeset(workingtime, attrs) do
+    workingtime
+    |> cast(attrs, [:start, :end, :user_id])
+    |> validate_required([:start, :end, :user_id])
+  end
+end

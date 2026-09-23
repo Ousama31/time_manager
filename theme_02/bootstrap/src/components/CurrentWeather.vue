@@ -22,6 +22,9 @@
   </template>
   
   <script>
+
+  import axios from 'axios'
+
   export default {
     name: "CurrentWeather",
   
@@ -32,7 +35,8 @@
         city: this.$route.params.city,
         cities: ["Paris", "New York", "Tokyo", "Berlin", "Dubai"],
         temperature: 20,
-        date: new Date().toLocaleDateString()
+        date: new Date().toLocaleDateString(),
+        apiKey: "f2d2b1718ff807b36f899c38adfc8d55"
       }
     },
   
@@ -41,8 +45,13 @@
       refreshCurrentWeather() {
         // Update the route and refresh the temperature
         this.$router.push(`/currentWeather/${this.city}`)
-        // Generate a random temperature
-        this.temperature = Math.floor(Math.random() * 30)
+
+        const requestUrl = `https://api.openweathermap.org/data/2.5/weather?q=${this.city}&units=metric&appid=${this.apiKey}`
+      
+        axios.get(requestUrl).then((response) => {
+          console.log("API Response:", response)
+          this.temperature = response.data.main.temp
+        })
       }
     }
   }

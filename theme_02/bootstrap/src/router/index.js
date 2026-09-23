@@ -1,18 +1,29 @@
 // Import Vue Router
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
-// Import the weather component
+// Import components
 import CurrentWeather from '../components/CurrentWeather.vue'
+import ForecastChart from '../components/ForecastChart.vue'
 
 // Define application routes
 const router = createRouter({
-  history: createWebHistory(),
+  // Use hash history to support URLs like /#/forecastChart/Lyon
+  history: createWebHashHistory(),
 
   routes: [
+    {
+      path: '/',
+      redirect: '/forecastChart/Lyon'
+    },
     {
       path: '/currentWeather/:city',
       name: 'currentWeather',
       component: CurrentWeather
+    },
+    {
+      path: '/forecastChart/:city',
+      name: 'forecastChart',
+      component: ForecastChart
     }
   ]
 })

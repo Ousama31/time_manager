@@ -15,8 +15,11 @@ defmodule TimeManagerWeb.WorkingtimeController do
   #update the create function to accept userID as a parameter and associate the new workingtime with the userID
   def create(conn, %{"userID" => user_id, "workingtime" => workingtime_params}) do
 
+    # Safely handle user_id whether Phoenix passed it as a String or Integer
+    parsed_user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
+
     # add the user_id from the URL to the workingtime data
-    workingtime_params = Map.put(workingtime_params, "user_id", String.to_integer(user_id))
+    workingtime_params = Map.put(workingtime_params, "user_id", parsed_user_id)
 
     with {:ok, %Workingtime{} = workingtime} <-
       Workingtimes.create_workingtime(workingtime_params) do

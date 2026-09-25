@@ -53,6 +53,6 @@ defmodule TimeManagerWeb.Endpoint do
   plug Plug.Session, @session_options
   #CORS to allow requests from other domains(Vue.js, React.js, etc.)
   plug CORSPlug,
-    origin: ["http://localhost:5174"]
+    origin: ["http://localhost:5174", "http://localhost:5173"]
   plug TimeManagerWeb.Router
 end

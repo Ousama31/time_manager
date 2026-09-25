@@ -2,9 +2,9 @@
   <section>
     <h2>Clock Manager</h2>
 
-    <p>User ID: {{ userId }}</p>
+    <p>User ID: {{ userId || "none" }}</p>
     <p>
-      Status: 
+      Status:
       <strong>{{ clockIn ? "Clocked In" : "Clocked Out" }}</strong>
     </p>
     <p v-if="startDateTime">
@@ -24,99 +24,92 @@ import axios from 'axios'
 export default {
   name: "ClockManager",
 
+  props: ["userId"],
+
   data() {
     return {
-      userId: 1,
       startDateTime: null,
       clockIn: false
     }
   },
 
-  mounted() {
-    this.refresh()
+  watch: {
+    userId: {
+      immediate: true,
+      handler() {
+        this.refresh()
+      }
+    }
   },
 
   methods: {
-    formatDate(date) {
-      return date.getFullYear() + "-" +
-        String(date.getMonth() + 1).padStart(2, '0') + "-" +
-        String(date.getDate()).padStart(2, '0') + " " +
-        String(date.getHours()).padStart(2, '0') + ":" +
-        String(date.getMinutes()).padStart(2, '0') + ":" +
-        String(date.getSeconds()).padStart(2, '0')
+    resetClock() {
+      this.clockIn = false
+      this.startDateTime = null
     },
 
     refresh() {
+      if (!this.userId) {
+        this.resetClock()
+        return
+      }
+
       axios
         .get(`http://localhost:4000/api/clocks/${this.userId}`)
         .then((response) => {
-          const clockData = response.data.data || response.data
+          const clockData = response.data.data
+
           if (clockData && clockData.status) {
-            this.clockIn = clockData.status
+            this.clockIn = true
             this.startDateTime = clockData.time
           } else {
-            this.clockIn = false
-            this.startDateTime = null
+            this.resetClock()
           }
         })
-        .catch((error) => console.error("Error refreshing clock:", error))
+        .catch(() => {
+          this.resetClock()
+        })
     },
 
     clock() {
-  const now = new Date()
-  const nowFormatted = this.formatDate(now)
+      if (!this.userId) {
+        return
+      }
 
-  if (!this.clockIn) {
-    // --- CLOCK IN ---
-    axios
-      .post(`http://localhost:4000/api/clocks/${this.userId}`, {
-        clock: {
-          time: nowFormatted,
-          status: true
-        }
-      })
-      .then((response) => {
-        console.log("Clocked in:", response.data)
-        this.clockIn = true
-        this.startDateTime = nowFormatted
-      })
-      .catch((error) => console.error("Error clocking in:", error))
+      if (!this.clockIn) {
+        axios
+          .post(`http://localhost:4000/api/clocks/${this.userId}`)
+          .then((response) => {
+            this.clockIn = true
+            this.startDateTime = response.data.data.time
+          })
+          .catch((error) => {
+            console.error(error)
+          })
+        return
+      }
 
-  } else {
-    // --- CLOCK OUT ---
-    const startTime = this.startDateTime || nowFormatted
-    const endTime = nowFormatted
+      const startTime = this.startDateTime
+      const endTime = new Date().toISOString()
 
-    // Step A: Update Clock status to false
-    axios
-      .post(`http://localhost:4000/api/clocks/${this.userId}`, {
-        clock: {
-          time: endTime,
-          status: false
-        }
-      })
-      .then(() => {
-        // Step B: Post to Workingtime using the "workingtime" key expected by your Phoenix controller
-        return axios.post(`http://localhost:4000/api/workingtime/${this.userId}`, {
-          workingtime: {
-            start: startTime,
-            end: endTime
-          }
+      axios
+        .post(`http://localhost:4000/api/clocks/${this.userId}`)
+        .then(() => {
+          return axios.post(`http://localhost:4000/api/workingtime/${this.userId}`, {
+            workingtime: {
+              start: startTime,
+              end: endTime
+            }
+          })
         })
-      })
-      .then((response) => {
-        console.log("Working time recorded successfully:", response.data)
-        this.clockIn = false
-        this.startDateTime = null
-      })
-      .catch((error) => {
-        console.error("Error creating working time:", error)
-        // Reset UI so user isn't stuck
-        this.clockIn = false
-        this.startDateTime = null
-      })
-  }
-}
+        .then(() => {
+          this.resetClock()
+        })
+        .catch((error) => {
+          console.error(error)
+          this.resetClock()
+        })
+    }
   }
 }
 </script>

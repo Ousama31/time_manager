@@ -6,6 +6,8 @@
 
     <div v-for="workingTime in workingTimes" :key="workingTime.id">
       <p>
+        ID: {{ workingTime.id }}
+        <br />
         Start: {{ workingTime.start }}
         <br />
         End: {{ workingTime.end }}

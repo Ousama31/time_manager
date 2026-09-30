@@ -1,0 +1,10 @@
+_build
+deps
+.elixir_ls
+.git
+.gitignore
+.env
+test
+cover
+doc
+*.log

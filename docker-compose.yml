@@ -1,4 +1,5 @@
-version: '3.8'
+name: project
+
 services:
   db:
     image: postgres:14
@@ -15,18 +16,23 @@ services:
 
 
   phoenix:
-    image: ${DOCKER_IMAGE:-time-manager:latest}
-    build: .
+    image: ${DOCKER_IMAGE:-time-manager:backend}
+    build: backend/project
     ports:
       - "4000:4000"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: ecto://${PGUSER}:${PGPASSWORD}@db:5432/${PGDATABASE}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}
+      PHX_HOST: ${PHX_HOST:-localhost}
+      PHX_SERVER: "true"
     depends_on:
       - db
 
   frontend:
-    image: ${FRONTEND_DOCKER_IMAGE:-time-manager-frontend:latest}
-    build: ../../frontend/project
+    image: ${FRONTEND_DOCKER_IMAGE:-time-manager:frontend}
+    build: frontend/project
     ports:
       - "80:80"
     depends_on:

@@ -6,7 +6,7 @@ services:
 
 env:
   global:
-    - COMPOSE_FILE=backend/project/docker-compose.yml
+    - COMPOSE_FILE=docker-compose.yml
     - DOCKER_BUILD_CONTEXT=backend/project
     - FRONTEND_DOCKER_BUILD_CONTEXT=frontend/project
 

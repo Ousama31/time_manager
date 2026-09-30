@@ -1,25 +1,50 @@
-#w'll use official image of elixir 
-FROM elixir:1.14
+FROM elixir:1.17-slim AS builder
 
-#    Add dependencies for PostgreSQL and Node
-RUN apt-get update && apt-get install -y postgresql-client nodejs npm inotify-tools
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential ca-certificates git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Go to the working directory name /app
 WORKDIR /app
 
-# Install mix (which is present in the image of Elixir) and phoenix dependencies
+ENV MIX_ENV=prod
+
 RUN mix local.hex --force && mix local.rebar --force
 
-# Copy the application inside the image
-COPY . .
+COPY mix.exs mix.lock ./
+COPY config config
+RUN mix deps.get --only prod \
+    && mix deps.compile
 
-# install phoenix dependencies
-RUN mix deps.get
+COPY lib lib
+COPY priv priv
 
-#  Install dependencies of JS(node) and launch Webpack.
-RUN cd assets && npm install
+RUN mix compile \
+    && mix phx.digest \
+    && mix release
 
-# create, give permission and execute entrypoint.sh
-#execute actions on initialization of the image in a container.
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      libstdc++6 \
+      libncurses6 \
+      openssl \
+      postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+ENV HOME=/app \
+    MIX_ENV=prod \
+    PHX_SERVER=true \
+    PORT=4000
+
+COPY --from=builder /app/_build/prod/rel/time_manager ./
+COPY entrypoint.sh ./entrypoint.sh
+
 RUN chmod +x entrypoint.sh
+
+EXPOSE 4000
+
 ENTRYPOINT ["./entrypoint.sh"]

@@ -1,0 +1,36 @@
+language: minimal
+dist: focal
+
+services:
+  - docker
+
+env:
+  global:
+    - COMPOSE_FILE=theme_01/project/docker-compose.yml
+    - DOCKER_BUILD_CONTEXT=theme_01/project
+
+jobs:
+  include:
+    - stage: "Build & Push Image"
+      if: branch = main AND type != pull_request
+      script:
+        - test -n "$DOCKER_USERNAME"
+        - test -n "$DOCKER_PASSWORD"
+        - test -n "$DOCKER_IMAGE"
+        - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+        - docker build --tag "$DOCKER_IMAGE" "$DOCKER_BUILD_CONTEXT"
+        - docker push "$DOCKER_IMAGE"
+
+    - stage: "Deploy"
+      if: branch = main AND type != pull_request
+      before_script:
+        - test -n "$SSH_KEY"
+        - test -n "$SERVER_USER"
+        - test -n "$SERVER_IP"
+        - echo "$SSH_KEY" | base64 --decode > deploy_key.pem
+        - chmod 400 deploy_key.pem
+      script:
+        - scp -o StrictHostKeyChecking=no -i deploy_key.pem "$COMPOSE_FILE" "$SERVER_USER@$SERVER_IP:/home/$SERVER_USER/docker-compose.yml"
+        - ssh -o StrictHostKeyChecking=no -i deploy_key.pem "$SERVER_USER@$SERVER_IP" "DOCKER_IMAGE='$DOCKER_IMAGE' docker compose -f /home/$SERVER_USER/docker-compose.yml pull && DOCKER_IMAGE='$DOCKER_IMAGE' docker compose -f /home/$SERVER_USER/docker-compose.yml up -d"
+      after_script:
+        - rm -f deploy_key.pem

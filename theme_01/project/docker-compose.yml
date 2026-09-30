@@ -15,6 +15,7 @@ services:
 
 
   phoenix:
+    image: ${DOCKER_IMAGE:-time-manager:latest}
     build: .
     ports:
       - "4000:4000"

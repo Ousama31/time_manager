@@ -1,7 +1,7 @@
 // src/api.js
 import axios from 'axios';
 
-export const DEFAULT_MOBILE_HOST = 'http://172.20.10.2:4000/api';
+export const DEFAULT_MOBILE_HOST = 'http://10.139.91.118:4000/api';
 export const DEFAULT_WEB_HOST = 'http://localhost:4000/api';
 
 function isNativePlatform() {

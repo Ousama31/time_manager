@@ -104,7 +104,10 @@ export default {
           this.error = 'Token missing in response';
         }
       } catch (err) {
-        this.error = err.response?.data?.error || 'Invalid credentials';
+        this.error = err.response?.data?.error ||
+          (err.response
+            ? 'Sign in failed. Check your username and password.'
+            : `Cannot reach the server at ${api.defaults.baseURL}. Check the API address and network connection.`);
       }
     }
   }

@@ -24,6 +24,7 @@ defmodule TimeManagerWeb.Router do
       # to sign out user
       post "/users/sign_out", AuthController, :sign_out
 
+      get "/users/unassigned", UserController, :unassigned
       resources "/users", UserController, except: [:new, :edit]
 
       get "/workingtime/:userID", WorkingtimeController, :index
@@ -34,7 +35,6 @@ defmodule TimeManagerWeb.Router do
 
       get "/clocks/:userID", ClockController, :show
       post "/clocks/:userID", ClockController, :create
-
     end
   end
 

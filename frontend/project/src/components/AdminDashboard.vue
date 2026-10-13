@@ -99,6 +99,11 @@
               </div>
               <article class="statistics-chart"><div><h3>{{ isManagerStats ? 'Team working hours this week' : 'Working hours this week' }}</h3><strong>{{ formatMinutes(statsWeekMinutes) }}</strong></div><WeeklyHoursChart variant="manager" :days="statsWeekBars" :label="`${isManagerStats ? 'Team' : 'Selected member'} hours this week: ${formatMinutes(statsWeekMinutes)}`" /></article>
             </div>
+            <div v-if="statsUser.role === 'Employee'" class="drawer-team-controls">
+              <p v-if="teamActionError" class="membership-error" role="alert">{{ teamActionError }}</p>
+              <button v-if="statsUser.managerId" type="button" class="team-action drawer-team-action team-remove" :disabled="teamActionBusy" @click="updateTeamAssignment(statsUser, null)">{{ teamActionBusy ? 'Saving…' : 'Remove from team' }}</button>
+              <div v-else class="drawer-team-add"><label for="stats-team-manager">Add to team</label><div><select id="stats-team-manager" v-model="selectedStatsManagerId"><option value="">Choose a team</option><option v-for="team in managerTeams" :key="team.manager.id" :value="team.manager.id">{{ team.manager.name }}</option></select><button type="button" class="team-action drawer-team-action" :disabled="teamActionBusy || !selectedStatsManagerId" @click="addStatsUserToTeam">{{ teamActionBusy ? 'Saving…' : 'Add to team' }}</button></div></div>
+            </div>
           </div>
         </aside>
       </div>
@@ -158,6 +163,9 @@ export default {
       statsRequestId: 0,
       now: new Date(),
       savingRole: false,
+      teamActionBusy: false,
+      selectedStatsManagerId: '',
+      teamActionError: '',
       searchQuery: '',
       statusFilter: 'All',
       roleFilter: 'All',
@@ -339,11 +347,15 @@ export default {
     openStatistics(user) {
       this.statsUser = user
       this.selectedStatsUserId = String(user.id)
+      this.selectedStatsManagerId = ''
+      this.teamActionError = ''
       this.statsTeamMembers = []
       this.loadStatistics()
     },
     closeStatistics() {
       this.statsUser = null
+      this.selectedStatsManagerId = ''
+      this.teamActionError = ''
       this.statsRequestId += 1
       this.statsLoading = false
     },
@@ -381,6 +393,29 @@ export default {
           : 'Could not save this role change. Please try again.'
       } finally {
         this.savingRole = false
+      }
+    },
+    async addStatsUserToTeam() {
+      if (!this.statsUser || !this.selectedStatsManagerId) return
+      await this.updateTeamAssignment(this.statsUser, this.selectedStatsManagerId)
+    },
+    async updateTeamAssignment(employee, managerId) {
+      if (this.teamActionBusy) return
+      this.teamActionBusy = true
+      this.teamActionError = ''
+      try {
+        await api.patch(`/users/${employee.id}`, { user: { manager_id: managerId } })
+        employee.managerId = managerId
+        employee.manager_id = managerId
+        if (this.statsUser && String(this.statsUser.id) === String(employee.id)) {
+          this.statsUser.managerId = managerId
+          this.statsUser.manager_id = managerId
+        }
+        this.selectedStatsManagerId = ''
+      } catch (error) {
+        this.teamActionError = error.response?.data?.error || 'Could not update this team assignment. Please try again.'
+      } finally {
+        this.teamActionBusy = false
       }
     },
     async toggleUserStatus(user) {
@@ -491,6 +526,8 @@ export default {
 .team-card, .unassigned-card { min-width: 0; padding: 16px; border: 1px solid #e6eaf0; border-radius: 11px; background: #fff; box-shadow: 0 3px 12px rgb(22 34 52 / 3%); }
 .team-manager { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #eef0f4; }
 .team-manager .role-badge { margin-left: auto; }
+.team-remove { padding: 6px 9px; border: 1px solid #f0dada; border-radius: 6px; color: #a54b4b; background: #fff; font: inherit; font-size: 9px; font-weight: 650; cursor: pointer; }
+.team-remove { margin-left: auto; color: #a54b4b; border-color: #f0dada; }
 .team-members-heading { display: flex; align-items: center; gap: 8px; margin: 14px 0 3px; color: #8994a3; font-size: 8px; font-weight: 750; letter-spacing: .8px; }
 .team-members { margin: 0; padding: 0; list-style: none; }
 .team-members li { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 10px 0; border-bottom: 1px solid #f0f2f5; }
@@ -878,6 +915,14 @@ export default {
 }
 
 .statistics-content { padding: 0; }
+.drawer-team-controls { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--app-border); }
+.drawer-team-add > label { display: block; margin-bottom: 7px; color: var(--app-muted); font-size: 12px; font-weight: 650; }
+.drawer-team-add > div { display: flex; gap: 8px; }
+.drawer-team-add select { min-width: 0; flex: 1; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 7px; color: var(--app-text); background: var(--app-surface); font: inherit; font-size: 12px; }
+.drawer-team-action { min-height: 38px; margin-top: 0; font-size: 12px; }
+.drawer-team-add .drawer-team-action { flex: 0 0 auto; }
+.drawer-team-controls > .drawer-team-action { width: 100%; }
+.membership-error { margin: 0 0 10px; color: #a33636; font-size: 12px; }
 .statistics-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .statistics-summary--team { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .statistics-metric { display: grid; min-width: 0; gap: 8px; padding: 17px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-background); }

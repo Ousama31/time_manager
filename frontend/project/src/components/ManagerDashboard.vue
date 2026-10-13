@@ -2,8 +2,8 @@
   <AppShell :navigation="navigation" :active-tab="activeTab" @navigate="navigateTab" @logout="disconnect">
     <div class="manager-main">
       <div class="manager-content">
-        <section v-if="activeTab === 'team'" id="dashboard" class="dashboard-section">
-          <div class="page-heading"><div><p class="eyebrow">TEAM OVERVIEW</p><h1>Team</h1><p class="page-subtitle">Attendance and working times for your team.</p></div></div>
+        <section v-if="activeTab === 'statistics'" id="dashboard" class="dashboard-section">
+          <div class="page-heading"><div><p class="eyebrow">TEAM OVERVIEW</p><h1>Statistics</h1><p class="page-subtitle">Attendance and working times for your team.</p></div></div>
 
           <div v-if="loadError" class="load-error" role="alert">{{ loadError }} <button @click="loadDashboard">Try again</button></div>
 
@@ -21,13 +21,20 @@
             <article class="insight-card live-card"><h2>Live team status</h2><p class="live-count"><strong>{{ clockedInCount }}</strong><span>of {{ activeTeamCount }} active members working</span></p><div class="live-progress" role="progressbar" :aria-valuenow="clockedInCount" :aria-valuemin="0" :aria-valuemax="activeTeamCount || 1"><span :style="{ width: `${clockedInPercent}%` }"></span></div><div class="live-legend"><span><i class="dot-working"></i>Working <strong>{{ clockedInCount }}</strong></span><span><i class="dot-break"></i>Break <strong>{{ onBreakCount }}</strong></span><span><i class="dot-off"></i>Off <strong>{{ offClockCount }}</strong></span></div></article>
           </section>
 
-          <section id="team" class="team-panel" aria-labelledby="team-heading">
-            <header class="team-panel-heading"><div><h2 id="team-heading">Team members <span class="count-pill">{{ filteredTeam.length }}</span></h2><p>Clock status refreshes automatically; hours come from recorded work times.</p></div><label class="team-search"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg><input v-model="searchQuery" type="search" placeholder="Search team…" aria-label="Search team members" /></label></header>
+        </section>
+        <section v-else-if="activeTab === 'team'" class="team-directory-section">
+          <div class="page-heading"><div><p class="eyebrow">TEAM MANAGEMENT</p><h1>My team</h1><p class="page-subtitle">Manage your assigned employees and unassigned staff.</p></div><label class="team-search"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg><input v-model="searchQuery" type="search" placeholder="Search employees…" aria-label="Search employees" /></label></div>
+          <div v-if="loadError" class="load-error" role="alert">{{ loadError }} <button @click="loadDashboard">Try again</button></div>
+          <section class="team-panel" aria-labelledby="my-team-heading">
+            <header class="team-panel-heading"><div><h2 id="my-team-heading">Current team <span class="count-pill">{{ filteredTeam.length }}</span></h2><p>Employees assigned to you.</p></div></header>
             <div v-if="loading" class="team-empty">Loading your team…</div>
-            <div v-else-if="!filteredTeam.length" class="team-empty">{{ team.length ? 'No team members match your search.' : 'No employees are assigned to your team yet.' }}</div>
-            <div v-else class="team-table-scroll"><table class="team-table"><thead><tr><th>EMPLOYEE</th><th>STATUS</th><th>TODAY</th><th>THIS WEEK</th></tr></thead><tbody>
-              <tr v-for="member in filteredTeam" :key="member.id"><td><button type="button" class="employee-cell" :aria-label="`View statistics for ${member.name}`" @click="selectedMember = member"><InitialAvatar variant="employee-avatar" :tone="member.avatarTone" :initials="member.initials" /><span><strong>{{ member.name }}</strong><small>{{ member.email }}</small></span></button></td><td><span class="status-group"><span class="work-status" :class="member.status === 'Inactive' ? 'suspended' : member.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ member.status === 'Inactive' ? 'Suspended' : member.clockState !== 'off' ? 'Working' : 'Off the clock' }}</span><span v-if="member.status === 'Active' && member.clockState === 'break'" class="break-indicator"><i></i>On break</span></span></td><td>{{ formatMinutes(memberTodayMinutes(member)) }}</td><td>{{ formatMinutes(memberWeekMinutes(member)) }}</td></tr>
-            </tbody></table></div>
+            <ul v-else-if="filteredTeam.length" class="team-directory-list"><li v-for="member in filteredTeam" :key="member.id"><button type="button" class="employee-cell" :aria-label="`View statistics for ${member.name}`" @click="openStatistics(member)"><InitialAvatar variant="employee-avatar" :tone="member.avatarTone" :initials="member.initials" /><span><strong>{{ member.name }}</strong><small>{{ member.email }}</small></span></button><span class="work-status" :class="member.status === 'Inactive' ? 'suspended' : member.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ member.status === 'Inactive' ? 'Suspended' : member.clockState !== 'off' ? 'Working' : 'Off the clock' }}</span></li></ul>
+            <div v-else class="team-empty">{{ team.length ? 'No team members match your search.' : 'No employees are assigned to your team yet.' }}</div>
+          </section>
+          <section class="team-panel unassigned-panel" aria-labelledby="unassigned-heading">
+            <header class="team-panel-heading"><div><h2 id="unassigned-heading">Unassigned Employees <span class="count-pill">{{ filteredUnassigned.length }}</span></h2><p>Employees who are not assigned to a team.</p></div></header>
+            <ul v-if="filteredUnassigned.length" class="team-directory-list"><li v-for="employee in filteredUnassigned" :key="employee.id"><button type="button" class="employee-cell" :aria-label="`View statistics for ${employee.name}`" @click="openStatistics(employee)"><InitialAvatar variant="employee-avatar" :tone="employee.avatarTone" :initials="employee.initials" /><span><strong>{{ employee.name }}</strong><small>{{ employee.email }}</small></span></button><span class="work-status off-clock"><i></i>{{ employee.status }}</span></li></ul>
+            <div v-else class="team-empty">{{ unassignedEmployees.length ? 'No unassigned employees match your search.' : 'There are no unassigned employees.' }}</div>
           </section>
         </section>
         <section v-else class="manager-profile-section">
@@ -37,7 +44,37 @@
         </section>
       </div>
     </div>
-    <Transition name="detail-fade"><div v-if="selectedMember" class="detail-backdrop" @click.self="selectedMember = null"><section class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-heading"><header><div><p class="eyebrow">TEAM MEMBER</p><h2 id="detail-heading">{{ selectedMember.name }}</h2><p>{{ selectedMember.email }}</p></div><button class="close-button" aria-label="Close details" @click="selectedMember = null">×</button></header><div class="detail-metrics"><div><small>Today</small><strong>{{ formatMinutes(memberTodayMinutes(selectedMember)) }}</strong></div><div><small>This week</small><strong>{{ formatMinutes(memberWeekMinutes(selectedMember)) }}</strong></div></div><div class="detail-chart"><div><h3>Working hours this week</h3><strong>{{ formatMinutes(memberWeekMinutes(selectedMember)) }}</strong></div><WeeklyHoursChart variant="manager" :days="selectedMemberWeekBars" :label="`${selectedMember.name} hours this week: ${formatMinutes(memberWeekMinutes(selectedMember))}`" /></div><div class="detail-clock"><span class="status-group"><span class="work-status" :class="selectedMember.status === 'Inactive' ? 'suspended' : selectedMember.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ selectedMember.status === 'Inactive' ? 'Suspended' : selectedMember.clockState !== 'off' ? 'Working now' : 'Off the clock' }}</span><span v-if="selectedMember.status === 'Active' && selectedMember.clockState === 'break'" class="break-indicator"><i></i>On break</span></span><small v-if="selectedMember.clockedInSince">{{ selectedMember.clockState === 'break' ? 'Break started' : 'Since' }} {{ formatTime(selectedMember.clockedInSince) }}</small></div></section></div></Transition>
+    <Transition name="detail-fade">
+      <div v-if="selectedMember" class="detail-backdrop" @click.self="closeStatistics">
+        <section class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-heading">
+          <header>
+            <div><p class="eyebrow">TEAM MEMBER</p><h2 id="detail-heading">{{ selectedMember.name }}</h2><p>{{ selectedMember.email }}</p></div>
+            <button class="close-button" aria-label="Close details" @click="closeStatistics">×</button>
+          </header>
+          <p v-if="selectedMemberLoading" class="membership-loading">Loading employee statistics...</p>
+          <template v-else-if="selectedMember.managerId">
+            <div class="detail-metrics">
+              <div><small>Today</small><strong>{{ formatMinutes(memberTodayMinutes(selectedMember)) }}</strong></div>
+              <div><small>This week</small><strong>{{ formatMinutes(memberWeekMinutes(selectedMember)) }}</strong></div>
+            </div>
+            <div class="detail-chart">
+              <div><h3>Working hours this week</h3><strong>{{ formatMinutes(memberWeekMinutes(selectedMember)) }}</strong></div>
+              <WeeklyHoursChart variant="manager" :days="selectedMemberWeekBars" :label="`${selectedMember.name} hours this week: ${formatMinutes(memberWeekMinutes(selectedMember))}`" />
+            </div>
+            <div class="detail-clock">
+              <span class="status-group">
+                <span class="work-status" :class="selectedMember.status === 'Inactive' ? 'suspended' : selectedMember.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ selectedMember.status === 'Inactive' ? 'Suspended' : selectedMember.clockState !== 'off' ? 'Working now' : 'Off the clock' }}</span>
+                <span v-if="selectedMember.status === 'Active' && selectedMember.clockState === 'break'" class="break-indicator"><i></i>On break</span>
+              </span>
+              <small v-if="selectedMember.clockedInSince">{{ selectedMember.clockState === 'break' ? 'Break started' : 'Since' }} {{ formatTime(selectedMember.clockedInSince) }}</small>
+            </div>
+          </template>
+          <p v-else class="membership-loading">Statistics are available after this employee joins your team.</p>
+          <p v-if="membershipError" class="membership-error" role="alert">{{ membershipError }}</p>
+          <button v-if="selectedMember.role === 'Employee'" type="button" class="team-action drawer-team-action" :class="{ 'team-remove': selectedMember.managerId }" :disabled="teamActionBusy || selectedMemberLoading" @click="toggleSelectedMembership">{{ teamActionBusy ? 'Saving...' : selectedMember.managerId ? 'Remove from my team' : 'Add to my team' }}</button>
+        </section>
+      </div>
+    </Transition>
   </AppShell>
 </template>
 
@@ -83,21 +120,27 @@ export default {
   data() {
     return {
       userId: sessionStorage.getItem('userId'),
-      activeTab: 'team',
+      activeTab: 'statistics',
       profile: {},
       team: [],
+      unassignedEmployees: [],
+      teamActionBusy: false,
       loading: true,
       refreshingClockStatuses: false,
       loadError: '',
       searchQuery: '',
       selectedMember: null,
+      selectedMemberLoading: false,
+      membershipError: '',
+      statsRequestId: 0,
       now: new Date()
     }
   },
   computed: {
     navigation() {
       return [
-        { key: 'team', label: 'Team', icon: 'teams' },
+        { key: 'statistics', label: 'Statistics', icon: 'chart' },
+        { key: 'team', label: 'My team', icon: 'teams' },
         { key: 'profile', label: 'Profile', icon: 'profile' }
       ]
     },
@@ -110,6 +153,10 @@ export default {
     filteredTeam() {
       const query = this.searchQuery.trim().toLowerCase()
       return this.team.filter((member) => !query || `${member.name} ${member.email}`.toLowerCase().includes(query))
+    },
+    filteredUnassigned() {
+      const query = this.searchQuery.trim().toLowerCase()
+      return this.unassignedEmployees.filter((employee) => !query || `${employee.name} ${employee.email}`.toLowerCase().includes(query))
     },
     activeTeamCount() {
       return this.team.filter((member) => member.status === 'Active').length
@@ -186,6 +233,9 @@ export default {
     navigateTab(tab) {
       this.activeTab = tab
       this.selectedMember = null
+          this.selectedMemberLoading = false
+          this.membershipError = ''
+          this.statsRequestId += 1
     },
     formatMinutes(minutes) {
       const safeMinutes = Math.max(0, Math.floor(minutes || 0))
@@ -195,10 +245,10 @@ export default {
       return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(value))
     },
     memberTodayMinutes(member) {
-      return sumMinutes(member.records, startOfLocalDay(this.now), this.now, member.clock, this.now)
+      return sumMinutes(member.records || [], startOfLocalDay(this.now), this.now, member.clock, this.now)
     },
     memberWeekMinutes(member) {
-      return sumMinutes(member.records, startOfLocalWeek(this.now), this.now, member.clock, this.now)
+      return sumMinutes(member.records || [], startOfLocalWeek(this.now), this.now, member.clock, this.now)
     },
     async refreshClockStatuses() {
       if (this.refreshingClockStatuses || this.team.length === 0) return
@@ -223,12 +273,25 @@ export default {
       this.loading = true
       this.loadError = ''
       try {
-        const [profileResponse, teamResponse] = await Promise.all([
+        const [profileResponse, teamResponse, unassignedResponse] = await Promise.all([
           this.userId ? api.get(`/users/${this.userId}`) : Promise.resolve({ data: { data: {} } }),
-          api.get('/users')
+          api.get('/users'),
+          api.get('/users/unassigned')
         ])
         this.profile = profileResponse.data.data || {}
         const users = teamResponse.data.data || []
+        this.unassignedEmployees = (unassignedResponse.data.data || []).map((user, index) => {
+          const name = getDisplayName(user, 'Unnamed employee')
+          return {
+            ...user,
+            name,
+            managerId: null,
+            role: 'Employee',
+            status: user.status === 'inactive' ? 'Inactive' : 'Active',
+            avatarTone: getAvatarTone(index),
+            initials: getInitials(name, 'U')
+          }
+        })
         const now = new Date()
         const dayStart = startOfLocalDay(now)
         const weekStart = startOfLocalWeek(now)
@@ -247,6 +310,8 @@ export default {
             email: user.email,
             initials,
             status: user.status === 'inactive' ? 'Inactive' : 'Active',
+            managerId: this.userId,
+            role: 'Employee',
             avatarTone: getAvatarTone(index),
             clock,
             clockState: clock?.state || (clock?.status ? 'working' : 'off'),
@@ -264,6 +329,67 @@ export default {
           : 'Could not load your team. Please try again.'
       } finally {
         this.loading = false
+      }
+    },
+    async openStatistics(member) {
+      const requestId = ++this.statsRequestId
+      this.selectedMember = member
+      this.selectedMemberLoading = false
+      this.membershipError = ''
+      if (Array.isArray(member.records)) return
+
+      this.selectedMemberLoading = true
+      const [clockResult, recordsResult] = await Promise.allSettled([
+        api.get(`/clocks/${member.id}`),
+        api.get(`/workingtime/${member.id}`)
+      ])
+      if (requestId !== this.statsRequestId) return
+
+      const clock = clockResult.status === 'fulfilled' ? clockResult.value.data.data : null
+      this.selectedMember = {
+        ...member,
+        clock,
+        records: recordsResult.status === 'fulfilled' ? recordsResult.value.data.data || [] : [],
+        clockState: clock?.state || (clock?.status ? 'working' : 'off'),
+        clockedInSince: clock && (clock.state ? clock.state !== 'off' : clock.status) ? clock.time : null
+      }
+      this.selectedMemberLoading = false
+    },
+    closeStatistics() {
+      this.selectedMember = null
+      this.selectedMemberLoading = false
+      this.membershipError = ''
+      this.statsRequestId += 1
+    },
+    async toggleSelectedMembership() {
+      if (!this.selectedMember || this.teamActionBusy) return
+      const employee = this.selectedMember
+      const managerId = employee.managerId ? null : this.userId
+      this.teamActionBusy = true
+      this.membershipError = ''
+      try {
+        await api.patch(`/users/${employee.id}`, { user: { manager_id: managerId } })
+        const updatedEmployee = { ...employee, managerId, manager_id: managerId }
+        this.team = this.team.filter((member) => String(member.id) !== String(employee.id))
+        this.unassignedEmployees = this.unassignedEmployees.filter((member) => String(member.id) !== String(employee.id))
+        const drawerIsOpenForEmployee = String(this.selectedMember?.id) === String(employee.id)
+        if (managerId) {
+          if (drawerIsOpenForEmployee) {
+            updatedEmployee.records = undefined
+            await this.openStatistics(updatedEmployee)
+            this.team = [...this.team, this.selectedMember]
+          } else {
+            this.team = [...this.team, updatedEmployee]
+          }
+        } else {
+          this.unassignedEmployees = [...this.unassignedEmployees, updatedEmployee]
+          if (drawerIsOpenForEmployee) this.selectedMember = updatedEmployee
+        }
+      } catch (error) {
+        this.membershipError = error.response?.data?.error || 'Could not update this team assignment. Please try again.'
+      } finally {
+        this.teamActionBusy = false
+        const minutes = sumMinutes(this.selectedMember.records || [], dayStart, end, this.selectedMember.clock, this.now)
       }
     },
     async disconnect() {
@@ -333,6 +459,20 @@ export default {
 .team-panel-heading h2 { display: flex; align-items: center; gap: 7px; margin: 0; color: #303a49; font-size: 11px; font-weight: 700; }
 .count-pill { padding: 3px 6px; border-radius: 999px; color: #657184; background: #f0f2f5; font-size: 8px; }
 .team-panel-heading p { margin: 4px 0 0; color: #929baa; font-size: 9px; }
+.team-action { min-height: 31px; padding: 0 10px; border: 1px solid #b9d8f8; border-radius: 6px; color: #146fc7; background: #edf5ff; font: inherit; font-size: 9px; font-weight: 680; cursor: pointer; }
+.team-action:disabled { opacity: .55; cursor: not-allowed; }
+.team-remove { min-height: 25px; color: #a54b4b; border-color: #f0dada; background: #fff; }
+.team-directory-section { display: grid; gap: 16px; }
+.team-directory-section > .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.team-directory-section .team-search { width: min(320px, 45%); }
+.team-directory-list { margin: 0; padding: 0 20px; list-style: none; }
+.team-directory-list li { display: flex; min-height: 72px; align-items: center; gap: 14px; border-bottom: 1px solid var(--app-border); }
+.team-directory-list li:last-child { border-bottom: 0; }
+.team-directory-list .employee-cell { flex: 1; min-width: 0; }
+.unassigned-panel { margin-top: 0; }
+.drawer-team-action { width: 100%; min-height: 42px; margin-top: 16px; font-size: 13px; }
+.membership-error { margin: 14px 0 0; color: #a33636; font-size: 12px; }
+.membership-loading { margin: 12px 0 0; color: var(--app-muted); font-size: 12px; }
 .team-search { display: flex; width: min(225px, 45%); min-height: 31px; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #e5e8ed; border-radius: 6px; background: #fff; }
 .team-search:focus-within { border-color: #82b8f3; box-shadow: 0 0 0 3px rgb(22 131 248 / 9%); }
 .team-search svg { width: 13px; fill: none; stroke: #929baa; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
@@ -431,6 +571,11 @@ export default {
   .team-panel-heading p { font-size: 11px; line-height: 1.45; }
   .team-panel-heading { align-items: flex-start; flex-direction: column; }
   .team-search { width: 100%; min-height: 42px; padding: 0 12px; border-radius: 11px; }
+  .team-directory-section > .page-heading { align-items: stretch; flex-direction: column; }
+  .team-directory-section .team-search { width: 100%; }
+  .team-directory-list { padding: 0 14px; }
+  .team-directory-list li { gap: 8px; }
+  .team-action { min-height: 42px; }
   .team-search svg { width: 17px; }
   .team-table-scroll { overflow: visible; padding: 10px; }
   .team-table { display: block; width: 100%; min-width: 0; white-space: normal; }

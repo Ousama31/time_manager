@@ -10,7 +10,8 @@ defmodule TimeManager.Accounts do
   alias TimeManager.Clocks.Clock
   alias TimeManager.Workingtimes.Workingtime
 
-  @token_max_age_seconds 60 * 60 # 1 hour
+  # 1 hour
+  @token_max_age_seconds 60 * 60
 
   @doc """
   Returns the list of users.
@@ -45,6 +46,14 @@ defmodule TimeManager.Accounts do
     )
   end
 
+  def list_unassigned_users do
+    Repo.all(
+      from u in User,
+        where: is_nil(u.manager_id) and u.role == :employee,
+        order_by: [asc: u.full_name, asc: u.id]
+    )
+  end
+
   def can_access_user_data?(%User{role: :admin}, _user_id), do: true
 
   def can_access_user_data?(%User{id: user_id, role: role} = user, requested_id)
@@ -55,8 +64,11 @@ defmodule TimeManager.Accounts do
       case user do
         %User{role: :manager, id: manager_id} ->
           case Integer.parse(to_string(requested_id)) do
-            {id, ""} -> Repo.exists?(from u in User, where: u.id == ^id and u.manager_id == ^manager_id)
-            _ -> false
+            {id, ""} ->
+              Repo.exists?(from u in User, where: u.id == ^id and u.manager_id == ^manager_id)
+
+            _ ->
+              false
           end
 
         _ ->
@@ -124,10 +136,43 @@ defmodule TimeManager.Accounts do
   end
 
   def update_user_role(%User{} = user, attrs) do
-    user
-    |> User.role_changeset(attrs)
-    |> Repo.update()
+    changeset = User.role_changeset(user, attrs)
+
+    case Ecto.Changeset.fetch_change(changeset, :manager_id) do
+      {:ok, manager_id} ->
+        cond do
+          Ecto.Changeset.get_field(changeset, :role) != :employee ->
+            {:error,
+             Ecto.Changeset.add_error(changeset, :manager_id, "must belong to an employee")}
+
+          is_nil(manager_id) ->
+            Repo.update(changeset)
+
+          match?(%User{role: :manager}, get_user(manager_id)) ->
+            Repo.update(changeset)
+
+          true ->
+            {:error, Ecto.Changeset.add_error(changeset, :manager_id, "must reference a manager")}
+        end
+
+      :error ->
+        Repo.update(changeset)
+    end
   end
+
+  def update_user_manager(%User{role: :employee} = user, manager_id) do
+    manager = if manager_id, do: get_user(manager_id)
+
+    if is_nil(manager_id) or match?(%User{role: :manager}, manager) do
+      user
+      |> User.manager_changeset(%{manager_id: manager_id})
+      |> Repo.update()
+    else
+      {:error, :invalid_manager}
+    end
+  end
+
+  def update_user_manager(_user, _manager_id), do: {:error, :not_employee}
 
   @doc """
   Deletes a user.
@@ -166,7 +211,6 @@ defmodule TimeManager.Accounts do
     User.changeset(user, attrs)
   end
 
-
   ## Authentication functions
 
   def authenticate_user(identifier, password) do
@@ -195,7 +239,6 @@ defmodule TimeManager.Accounts do
   end
 
   def verify_token(token) do
-
     case Phoenix.Token.verify(TimeManagerWeb.Endpoint, "user_auth", token,
            max_age: @token_max_age_seconds
          ) do

@@ -26,6 +26,16 @@ defmodule TimeManagerWeb.UserController do
     end
   end
 
+  def unassigned(conn, _params) do
+    if conn.assigns.current_user.role == :manager do
+      render(conn, :index, users: Accounts.list_unassigned_users())
+    else
+      conn
+      |> put_status(:forbidden)
+      |> json(%{error: "Manager access required"})
+    end
+  end
+
   def sign_up(conn, params) do
     user_params = Map.get(params, "user", params)
 
@@ -90,9 +100,37 @@ defmodule TimeManagerWeb.UserController do
           end
         end
 
+      current_user.role == :manager and not is_self ->
+        user = Accounts.get_user!(id)
+        manager_id = Map.get(user_params, "manager_id", :missing)
+
+        allowed_change =
+          (manager_id in [current_user.id, Integer.to_string(current_user.id)] and
+             is_nil(user.manager_id)) or
+            (is_nil(manager_id) and user.manager_id == current_user.id)
+
+        if user_params |> Map.keys() |> Enum.all?(&(&1 == "manager_id")) and allowed_change do
+          case Accounts.update_user_manager(user, manager_id) do
+            {:ok, %User{} = user} ->
+              render(conn, :show, user: user)
+
+            {:error, _reason} ->
+              conn
+              |> put_status(:unprocessable_entity)
+              |> json(%{error: "Invalid team assignment"})
+          end
+        else
+          conn
+          |> put_status(:forbidden)
+          |> json(%{
+            error: "You can only add unassigned employees or remove your own team members"
+          })
+        end
+
       is_self ->
         user = Accounts.get_user!(id)
         safe_params = Map.drop(user_params, ["role", "status", "manager_id"])
+
         with {:ok, %User{} = user} <- Accounts.update_user(user, safe_params) do
           render(conn, :show, user: user)
         end

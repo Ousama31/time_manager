@@ -30,9 +30,13 @@ defmodule TimeManager.Accounts.User do
 
   def role_changeset(user, attrs) do
     user
-    |> cast(attrs, [:role, :status])
+    |> cast(attrs, [:role, :status, :manager_id])
     |> validate_inclusion(:role, @roles)
     |> validate_inclusion(:status, [:active, :inactive])
+  end
+
+  def manager_changeset(user, attrs) do
+    cast(user, attrs, [:manager_id])
   end
 
   def profile_changeset(user, attrs) do

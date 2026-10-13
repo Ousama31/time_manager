@@ -73,22 +73,34 @@ defmodule TimeManagerWeb.UserController do
   end
 
   def update(conn, %{"id" => id, "user" => user_params}) do
-    if conn.assigns.current_user.role == :admin do
-      user = Accounts.get_user!(id)
+    current_user = conn.assigns.current_user
+    is_self = to_string(current_user.id) == to_string(id)
 
-      if to_string(user.id) == to_string(conn.assigns.current_user.id) and user_params["status"] == "inactive" do
-        conn
-        |> put_status(:unprocessable_entity)
-        |> json(%{error: "You cannot suspend your own administrator account"})
-      else
-        with {:ok, %User{} = user} <- Accounts.update_user_role(user, user_params) do
+    cond do
+      current_user.role == :admin ->
+        user = Accounts.get_user!(id)
+
+        if is_self and user_params["status"] == "inactive" do
+          conn
+          |> put_status(:unprocessable_entity)
+          |> json(%{error: "You cannot suspend your own administrator account"})
+        else
+          with {:ok, %User{} = user} <- Accounts.update_user_role(user, user_params) do
+            render(conn, :show, user: user)
+          end
+        end
+
+      is_self ->
+        user = Accounts.get_user!(id)
+        safe_params = Map.drop(user_params, ["role", "status", "manager_id"])
+        with {:ok, %User{} = user} <- Accounts.update_user(user, safe_params) do
           render(conn, :show, user: user)
         end
-      end
-    else
-      conn
-      |> put_status(:forbidden)
-      |> json(%{error: "Admin access required"})
+
+      true ->
+        conn
+        |> put_status(:forbidden)
+        |> json(%{error: "Unauthorized to update this user"})
     end
   end
 

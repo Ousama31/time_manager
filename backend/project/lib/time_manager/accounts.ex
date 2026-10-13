@@ -169,8 +169,12 @@ defmodule TimeManager.Accounts do
 
   ## Authentication functions
 
-  def authenticate_user(username, password) do
-    user = Repo.get_by(User, username: username)
+  def authenticate_user(identifier, password) do
+    user =
+      Repo.one(
+        from u in User,
+          where: u.username == ^identifier or u.email == ^identifier
+      )
 
     cond do
       user && Bcrypt.verify_pass(password, user.password_hash) ->

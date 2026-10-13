@@ -95,6 +95,9 @@ import InitialAvatar from './InitialAvatar.vue'
 import AppShell from './AppShell.vue'
 import WeeklyHoursChart from './WeeklyHoursChart.vue'
 
+const configuredAutoClockOutSeconds = Number(import.meta.env.VITE_AUTO_CLOCK_OUT_SECONDS)
+const AUTO_CLOCK_OUT_SECONDS = configuredAutoClockOutSeconds > 0 ? configuredAutoClockOutSeconds : 8 * 60 * 60 // 8 hours
+
 export default {
   name: 'Home',
   components: { AppShell, InitialAvatar, WeeklyHoursChart },
@@ -105,6 +108,7 @@ export default {
       workingTimes: [],
       clockState: 'off',
       clockStart: null,
+      clockSessionStart: null,
       now: Date.now(),
       clockBusy: false,
       loading: false,
@@ -205,7 +209,16 @@ export default {
   mounted() {
     this.loadProfile()
     this.loadDashboard()
-    this.tick = window.setInterval(() => { this.now = Date.now() }, 1000)
+    this.tick = window.setInterval(() => {
+      this.now = Date.now()
+      const sessionElapsed = this.clockSessionStart
+        ? (this.now - new Date(this.clockSessionStart).getTime()) / 1000
+        : 0
+
+      if (this.clockState !== 'off' && !this.clockBusy && sessionElapsed >= AUTO_CLOCK_OUT_SECONDS) {
+        this.toggleClock()
+      }
+    }, 1000)
   },
   beforeUnmount() {
     if (this.tick) window.clearInterval(this.tick)
@@ -232,6 +245,14 @@ export default {
         const clock = clockResponse.data.data
         this.clockState = clock?.state || (clock?.status ? 'working' : 'off')
         this.clockStart = this.clockState !== 'off' ? clock.time : null
+        const sessionStartKey = `clockSessionStart:${this.userId}`
+        if (this.clockState === 'off') {
+          this.clockSessionStart = null
+          sessionStorage.removeItem(sessionStartKey)
+        } else {
+          this.clockSessionStart = sessionStorage.getItem(sessionStartKey) || clock.time
+          sessionStorage.setItem(sessionStartKey, this.clockSessionStart)
+        }
         this.workingTimes = timesResponse.data.data || []
       } catch (error) {
         console.error('Could not load time data:', error)
@@ -252,6 +273,14 @@ export default {
         const clock = response.data.data
         this.clockState = clock?.state || (clock?.status ? 'working' : 'off')
         this.clockStart = this.clockState !== 'off' ? clock.time : null
+        const sessionStartKey = `clockSessionStart:${this.userId}`
+        if (this.clockState === 'off') {
+          this.clockSessionStart = null
+          sessionStorage.removeItem(sessionStartKey)
+        } else if (previousState === 'off') {
+          this.clockSessionStart = clock.time
+          sessionStorage.setItem(sessionStartKey, clock.time)
+        }
         if (previousStart && this.clockState === 'off' && clock?.time) {
           await api.post(`/workingtime/${this.userId}`, { workingtime: { start: previousStart, end: clock.time, kind: previousState === 'break' ? 'break' : 'work' } })
           await this.loadDashboard()

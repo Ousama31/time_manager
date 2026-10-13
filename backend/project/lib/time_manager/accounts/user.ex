@@ -35,6 +35,15 @@ defmodule TimeManager.Accounts.User do
     |> validate_inclusion(:status, [:active, :inactive])
   end
 
+  def profile_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:username, :email, :full_name, :password])
+    |> validate_required([:username, :email, :full_name])
+    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/)
+    |> unique_constraint(:email)
+    |> put_pass_hash()
+  end
+
   defp put_pass_hash(%Ecto.Changeset{valid?: true, changes: %{password: password}} = changeset) do
     put_change(changeset, :password_hash, Bcrypt.hash_pwd_salt(password))
   end

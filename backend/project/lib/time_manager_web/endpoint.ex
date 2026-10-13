@@ -2,7 +2,12 @@ defmodule TimeManagerWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :time_manager
 
   plug CORSPlug,
-    origin: ["http://localhost", "http://localhost:5173", "http://localhost:5174"],
+    origin: [
+      "capacitor://localhost",
+      "http://localhost",
+      "http://localhost:5173",
+      "http://localhost:5174"
+    ],
     headers: CORSPlug.defaults()[:headers] ++ ["X-XSRF-Token"]
 
   # The session will be stored in the cookie and signed,

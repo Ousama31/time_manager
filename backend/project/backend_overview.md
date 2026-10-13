@@ -1,661 +1,253 @@
-# Backend Overview
+# Time Manager Backend Overview
 
-This document explains the backend architecture of the Time Manager Phoenix app in simple terms.
+This guide describes the backend as it exists in the current repository. It explains the main concepts, how a request reaches PostgreSQL and returns, how roles and time tracking work, and where each part of the code lives.
 
----
+## 1. What the backend does
 
-## 1. High-level idea
-
-The backend is a Phoenix + Ecto application.
-
-A typical request follows this pattern:
+The backend is a Phoenix JSON API written in Elixir. PostgreSQL stores users, their clock-state history, and completed work or break intervals. The Vue frontend sends HTTP requests; it does not connect to the database directly.
 
 ```mermaid
 flowchart LR
-  A[Frontend request] --> B[Endpoint]
-  B --> C[Router]
-  C --> D[Controller]
-  D --> E[Context]
-  E --> F[Schema / Validation]
-  F --> G[Repo]
-  G --> H[(PostgreSQL)]
-  H --> G
-  G --> E
-  E --> D
-  D --> I[JSON response]
+  Browser[Vue browser app] -->|HTTP JSON| Router[Phoenix router]
+  Router --> Auth{Protected route?}
+  Auth -->|Yes: verify token| Plug[AuthPlug]
+  Auth -->|No: sign in / sign up| Controller
+  Plug --> Controller[Controller]
+  Controller --> Context[Accounts / Clocks / Workingtimes]
+  Context --> Schema[Schema and changeset]
+  Schema --> Repo[Ecto Repo]
+  Repo --> DB[(PostgreSQL)]
+  DB --> Repo --> Context --> Controller
+  Controller -->|JSON response| Browser
 ```
 
-In plain language:
+In short: **router → authentication → controller → context → schema/query → Repo → PostgreSQL**. The response travels back as JSON.
 
-- the request enters the app
-- the router matches the URL
-- the controller handles the request
-- the context does business logic
-- the schema validates data
-- the repo writes or reads the database
-- the controller returns JSON to the frontend
+## 2. Where the application starts
 
----
+- `lib/time_manager/application.ex` defines the OTP application and starts the Repo, telemetry, PubSub, and Phoenix endpoint.
+- `lib/time_manager_web/endpoint.ex` receives HTTP requests and runs the Phoenix request pipeline.
+- `lib/time_manager/repo.ex` configures Ecto's PostgreSQL adapter.
+- `config/` contains shared, development, test, production, and runtime settings.
 
-## 2. The app starts here
+The backend is typically run from `backend/project/` with Mix. In the Docker setup, its Dockerfile and entrypoint are in that project directory; database connection settings are supplied through the environment/configuration.
 
-### lib/time_manager/application.ex
+## 3. Database concepts: migrations, schemas, and rows
 
-This is the application startup file.
-
-It starts:
-
-- telemetry
-- the database repo
-- PubSub
-- the Phoenix endpoint
-
-This is the main boot file for the backend.
-
----
-
-## 3. The database connection
-
-### lib/time_manager/repo.ex
-
-This file sets up Ecto to talk to PostgreSQL.
-
-It is the connection between Elixir code and the database.
-
-```elixir
-defmodule TimeManager.Repo do
-  use Ecto.Repo,
-    otp_app: :time_manager,
-    adapter: Ecto.Adapters.Postgres
-end
-```
-
-This is the single access point for database operations.
-
----
-
-## 4. The database files
-
-The database tables are created in migration files under:
-
-### priv/repo/migrations
-
-The important migrations are:
-
-- 20260922141401_create_users.exs
-- 20260922141946_create_clocks.exs
-- 20260922142347_create_workingtime.exs
-
-These define the tables:
-
-- `users`
-- `clocks`
-- `workingtime`
-
-The migration creates the actual database structure.
-
----
-
-## 5. Schemas: Elixir versions of database tables
-
-### lib/time_manager/accounts/user.ex
-
-This file defines the `users` schema.
-
-It says a user has:
-
-- `username`
-- `email`
-- timestamps
-
-It also defines a `changeset`:
-
-```elixir
-def changeset(user, attrs) do
-  user
-  |> cast(attrs, [:username, :email])
-  |> validate_required([:username, :email])
-end
-```
-
-This validates incoming user data before it is saved.
-
-### lib/time_manager/clocks/clock.ex
-
-This defines the `clocks` schema.
-
-It includes:
-
-- `time`
-- `status`
-- `user_id`
-
-### lib/time_manager/workingtimes/workingtime.ex
-
-This defines the `workingtime` schema.
-
-It includes:
-
-- `start`
-- `end`
-- `user_id`
-
-Pattern:
-
-- migration = database table
-- schema = Elixir representation of that table
-
----
-
-## 6. Context modules: logic layer
-
-The context files are the real “logic layer.”
-
-### lib/time_manager/accounts.ex
-
-This handles user-related logic:
-
-- list users
-- get a user
-- create a user
-- update a user
-- delete a user
-- change a user
-
-Example:
-
-```elixir
-def create_user(attrs) do
-  %User{}
-  |> User.changeset(attrs)
-  |> Repo.insert()
-end
-```
-
-This is the actual create-user logic.
-
-### lib/time_manager/clocks.ex
-
-This handles clock operations.
-
-Important behavior:
-
-- look up the user’s latest clock
-- decide whether the next clock is in or out
-- create a record with a new status
-
-Example from the controller flow:
-
-```elixir
-last_clock = Clocks.get_clock_by_user(user_id)
-status = if last_clock, do: !last_clock.status, else: true
-```
-
-This is the “clock in / clock out” toggle logic.
-
-### lib/time_manager/workingtimes.ex
-
-This handles time intervals.
-
-It can:
-
-- list workingtime records for a user
-- filter by start and end dates
-- create workingtime entries
-- update and delete workingtime entries
-
-This is how the app stores work sessions or time blocks.
-
-Pattern:
-
-- context = application logic
-- repo = DB updates
-- schema = validation
-
----
-
-## 7. The router: URL mapping
-
-### lib/time_manager_web/router.ex
-
-This file maps URLs to controller actions.
-
-The important part is:
-
-```elixir
-scope "/api", TimeManagerWeb do
-  pipe_through :api
-
-  resources "/users", UserController, except: [:new, :edit]
-
-  get "/workingtime/:userID", WorkingtimeController, :index
-  get "/workingtime/:userID/:id", WorkingtimeController, :show
-  post "/workingtime/:userID", WorkingtimeController, :create
-  put "/workingtime/:id", WorkingtimeController, :update
-  delete "/workingtime/:id", WorkingtimeController, :delete
-
-  get "/clocks/:userID", ClockController, :show
-  post "/clocks/:userID", ClockController, :create
-end
-```
-
-This means:
-
-- `/api/users` -> user routes
-- `/api/clocks/:userID` -> clock routes
-- `/api/workingtime/:userID` -> workingtime routes
-
----
-
-## 8. Controllers: HTTP handlers
-
-### lib/time_manager_web/controllers/user_controller.ex
-
-This handles user requests.
-
-It does:
-
-- index
-- create
-- show
-- update
-- delete
-
-### lib/time_manager_web/controllers/clock_controller.ex
-
-This handles clock requests.
-
-It has a special create flow:
-
-- fetch latest clock for the user
-- flip its `status`
-- create a new clock record
-
-### lib/time_manager_web/controllers/workingtime_controller.ex
-
-This handles work interval requests.
-
-It:
-
-- reads route params
-- adds `user_id` to the request body
-- makes a workingtime record
-
-Pattern:
-
-- route matches URL
-- controller reads params
-- controller calls context
-- context writes to database
-
----
-
-## 9. JSON serializers
-
-These files turn Ecto structs into JSON.
-
-- lib/time_manager_web/controllers/user_json.ex
-- lib/time_manager_web/controllers/clock_json.ex
-- lib/time_manager_web/controllers/workingtime_json.ex
-
-Example from user serializer:
-
-```elixir
-def show(%{user: user}) do
-  %{data: data(user)}
-end
-
-defp data(%User{} = user) do
-  %{
-    id: user.id,
-    username: user.username,
-    email: user.email
-  }
-end
-```
-
-This ensures the frontend receives a clean JSON payload.
-
----
-
-## 10. Error handling
-
-### lib/time_manager_web/controllers/fallback_controller.ex
-
-This catches errors like validation failures and not-found errors.
-
-It converts them to proper API responses.
-
-### lib/time_manager_web/controllers/changeset_json.ex
-
-This formats validation errors from Ecto changesets.
-
-### lib/time_manager_web/controllers/error_json.ex
-
-This formats generic JSON errors.
-
-Pattern:
-
-- validation error -> 422
-- not found -> 404
-- controller fallback handles it
-
----
-
-## 11. Request lifecycle example: creating a user
-
-This is the full real example.
+A migration changes the database structure. A schema describes those rows to Elixir. A changeset checks data before it is saved.
 
 ```mermaid
-flowchart LR
-  A[Frontend sends POST /api/users] --> B[TimeManagerWeb.Endpoint]
-  B --> C[TimeManagerWeb.Router]
-  C --> D[TimeManagerWeb.UserController.create]
-  D --> E[TimeManager.Accounts.create_user]
-  E --> F[TimeManager.Accounts.User.changeset]
-  F --> G[TimeManager.Repo.insert]
-  G --> H[(users table)]
-  H --> G
-  G --> E
-  E --> D
-  D --> I[TimeManagerWeb.UserJSON.show]
-  I --> J[HTTP 201 JSON response]
+flowchart TB
+  Migration[Migration: table and columns] --> Database[(PostgreSQL table)]
+  Schema[Ecto schema: Elixir fields] --> Changeset[Changeset: cast and validate]
+  Request[Controller input] --> Changeset
+  Changeset -->|valid| Repo[Ecto Repo insert/update]
+  Repo --> Database
 ```
 
-Actual file chain with input/output at each stage:
+Current tables and their main purpose:
 
-- user makes a request sends an api to endpoint.
+| Table | Schema | What it records |
+| --- | --- | --- |
+| `users` | `lib/time_manager/accounts/user.ex` | Login identity, password hash, role, account status, manager assignment, timestamps |
+| `clocks` | `lib/time_manager/clocks/clock.ex` | Time-stamped clock transitions and the latest state for each user |
+| `workingtime` | `lib/time_manager/workingtimes/workingtime.ex` | Completed work or break intervals with start and end times |
 
-1. lib/time_manager_web/endpoint.ex
-   - Input: raw HTTP request with JSON
-   - Output: parsed request forwarded to the router
+Important migrations under `priv/repo/migrations/`:
 
-2. lib/time_manager_web/router.ex
-   - Input: `/api/users`
-   - Output: route resolves to `UserController.create`
+- `20260922141401_create_users.exs` creates the original users table.
+- `20260922141946_create_clocks.exs` creates clock records.
+- `20260922142347_create_workingtime.exs` creates working-time records.
+- `20261008110000_add_role_to_users.exs` adds the role field, defaulting to employee.
+- `20261008120000_add_status_to_users.exs` adds active/inactive account status.
+- `20261008130000_assign_employees_to_managers.exs` adds `manager_id`, a self-reference to the users table, and assigns existing employees across managers.
+- `20261008140000_add_break_tracking.exs` adds clock state and work/break kind fields.
 
-3. lib/time_manager_web/controllers/user_controller.ex
-   - Input: `%{"user" => %{"username" => "jordan", "email" => "jordan@example.com"}}`
-   - Output: calls `Accounts.create_user(user_params)`
+Migrations are versioned history. Editing an old migration does not update a database that has already run it; a new migration is normally used for later schema changes.
 
-4. lib/time_manager/accounts.ex
-   - Input: `user_params`
-   - Output: `%User{}` built and passed to `User.changeset` then `Repo.insert()`
+## 4. User model and role concepts
 
-5. lib/time_manager/accounts/user.ex
-   - Input: `%{"username" => "jordan", "email" => "jordan@example.com"}`
-   - Output: validated changeset or validation error
+`TimeManager.Accounts.User` maps a user row to an Elixir struct. Its fields include:
 
-6. lib/time_manager/repo.ex
-   - Input: valid changeset
-   - Output: inserted row in PostgreSQL
+- `username`, `email`, and `full_name` for identity.
+- `password` as a virtual field that is accepted during registration but not stored directly.
+- `password_hash` for the stored Bcrypt password hash.
+- `role`, restricted to `:employee`, `:manager`, or `:admin`.
+- `status`, restricted to `:active` or `:inactive`.
+- `manager_id`, an optional user ID that assigns an employee to a manager.
+- `inserted_at` and `updated_at`, maintained by Ecto timestamps.
 
-7. priv/repo/migrations/20260922141401_create_users.exs
-   - Input: migration run during setup
-   - Output: `users` table exists with `username`, `email`, and timestamps
+`User.changeset/2` validates registration fields and hashes a submitted password. `User.role_changeset/2` is used for role and status changes. The JSON serializer returns the public user fields needed by the frontend, including `role`, `status`, `manager_id`, and `joined_at`.
 
-8. lib/time_manager_web/controllers/user_json.ex
-   - Input: `%User{}` struct from the DB
-   - Output: JSON payload shaped like `{ data: %{id, username, email} }`
+The intended role model is:
 
-Example request at the network boundary:
-
-```json
-{
-  "user": {
-    "username": "jordan",
-    "email": "jordan@example.com"
-  }
-}
+```mermaid
+flowchart TD
+  Admin[Admin] --> AllUsers[All users and workspace management]
+  Manager[Manager] --> Team[Employees assigned to this manager]
+  Employee[Employee] --> OwnData[Own profile and time data]
 ```
 
-Example output at the end of the pipeline:
+The UI uses these roles to show the corresponding dashboard. The backend also applies role rules to user listing, selected user updates/deletion, and selected time-data reads; see the access-control note below for actions that still need review.
+
+## 5. Authentication lifecycle
+
+Public sign-in and sign-up routes are defined in `lib/time_manager_web/router.ex`. Other API routes use the authenticated pipeline.
+
+```mermaid
+sequenceDiagram
+  participant UI as Vue SignIn
+  participant API as AuthController
+  participant Accounts as Accounts context
+  participant DB as PostgreSQL
+  UI->>API: POST /api/users/sign_in (username, password)
+  API->>Accounts: authenticate_user/2
+  Accounts->>DB: find user by username
+  DB-->>Accounts: user row and password_hash
+  Accounts->>Accounts: verify Bcrypt hash and active status
+  Accounts-->>API: user and signed Phoenix token
+  API-->>UI: token plus user identity and role
+  UI->>UI: store token, user ID, role in sessionStorage
+```
+
+For later requests, `src/api.js` on the frontend sends the token in `x-xsrf-token`. `TimeManagerWeb.Plugs.AuthPlug` verifies it through `Accounts.verify_token/1` and assigns the active user to `conn.assigns.current_user`. A missing, invalid, expired, deleted-user, or inactive-user token is rejected.
+
+Sign-out currently returns a success response but does not maintain a token revocation list. The frontend clears its session storage; a copied token remains valid until expiry unless the account becomes inactive or is deleted.
+
+## 6. Contexts: application data operations
+
+Phoenix contexts group database operations by area.
+
+### Accounts — `lib/time_manager/accounts.ex`
+
+Provides user creation and lookup, filtered/sorted user listing, manager team listing, role/status updates, authentication, token verification, access decisions, and user deletion. Deleting a user removes that user's clock and working-time rows inside a database transaction before deleting the user row.
+
+### Clocks — `lib/time_manager/clocks.ex`
+
+Looks up a user's latest clock record, lists clocks, and creates, updates, or deletes clock records. Latest lookup orders by timestamp and then record ID so equal timestamps still have a stable ordering.
+
+### Workingtimes — `lib/time_manager/workingtimes.ex`
+
+Lists a user's work/break intervals, optionally filtering by start and end timestamps, and provides the standard create/update/delete operations. The `Workingtime` changeset accepts only `work` or `break` for `kind`.
+
+## 7. Clock and break state
+
+`ClockController.create/2` uses the latest clock record to determine the next state:
+
+| Action | Current state | New state |
+| --- | --- | --- |
+| `clock` | `off` | `working` |
+| `clock` | `working` | `off` |
+| `clock` | `break` | `off` |
+| `break` | `working` | `break` |
+| `break` | `break` | `working` |
+| `break` | `off` | rejected with HTTP 422 |
+
+The legacy boolean `status` remains in the clock row for compatibility: it is true only when the new state is `working`. The `state` string distinguishes `working`, `break`, and `off`.
+
+The frontend separately creates a completed interval in `workingtime` when a work or break segment ends. A work interval has `kind: "work"`; a break interval has `kind: "break"`. The current clock row represents the latest state, while completed intervals provide the history used for daily and weekly summaries.
+
+## 8. Routes and HTTP behavior
+
+All API routes start with `/api`. The router has a public API pipeline and an authenticated pipeline.
+
+| Method | Path | Controller action | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/users/sign_up` | `UserController.sign_up` | Register an account; role/status defaults apply |
+| `POST` | `/users/sign_in` | `AuthController.sign_in` | Verify credentials and return token/user |
+| `POST` | `/users/sign_out` | `AuthController.sign_out` | Return sign-out acknowledgement |
+| `GET` | `/users` | `UserController.index` | Admin gets all users; manager gets assigned employees |
+| `GET` | `/users/:id` | `UserController.show` | Return a user record |
+| `PATCH` / `PUT` | `/users/:id` | `UserController.update` | Admin changes role/status |
+| `DELETE` | `/users/:id` | `UserController.delete` | Admin deletes another user and their time rows |
+| `GET` | `/clocks/:userID` | `ClockController.show` | Return the latest clock state with a data-access check |
+| `POST` | `/clocks/:userID` | `ClockController.create` | Change clock or break state |
+| `GET` | `/workingtime/:userID` | `WorkingtimeController.index` | List intervals with a data-access check; optional `start` and `end` filters |
+| `POST` | `/workingtime/:userID` | `WorkingtimeController.create` | Create a work/break interval |
+| `GET` | `/workingtime/:userID/:id` | `WorkingtimeController.show` | Fetch one interval |
+| `PUT` / `PATCH` | `/workingtime/:id` | `WorkingtimeController.update` | Update an interval |
+| `DELETE` | `/workingtime/:id` | `WorkingtimeController.delete` | Delete an interval |
+
+Phoenix `resources "/users"` also declares `POST /users`, but the corresponding controller `create/2` implementation is currently commented out. Registration is implemented at `/users/sign_up` instead.
+
+## 9. Example request and response
+
+Employee starts work:
+
+```http
+POST /api/clocks/42
+Content-Type: application/json
+x-xsrf-token: <signed-token>
+
+{"action":"clock"}
+```
+
+If the user's current state is `off`, the response contains the new clock record:
 
 ```json
 {
   "data": {
-    "id": 1,
-    "username": "jordan",
-    "email": "jordan@example.com"
+    "id": 101,
+    "time": "2026-10-09T08:30:00Z",
+    "status": true,
+    "state": "working"
   }
 }
 ```
 
-Example validation result if data is bad:
-
-```json
-{
-  "errors": {
-    "username": ["can't be blank"],
-    "email": ["can't be blank"]
-  }
-}
-```
-
----
-
-## 12. Request lifecycle example: creating a clock
-
-```mermaid
-flowchart LR
-  A[Frontend sends POST /api/clocks/:userID] --> B[Router]
-  B --> C[ClockController.create]
-  C --> D[Clocks.get_clock_by_user]
-  D --> E[Repo query latest clock]
-  E --> F{Did previous clock exist?}
-  F -->|Yes| G[Flip status]
-  F -->|No| H[Start with true]
-  G --> I[Clocks.create_clock]
-  H --> I
-  I --> J[Clock.changeset]
-  J --> K[Repo.insert]
-  K --> L[(clocks table)]
-  L --> K
-  K --> I
-  I --> C
-  C --> M[ClockJSON.show]
-  M --> N[JSON response]
-```
-
-This is the important special behavior: the app is tracking current clock state, not just creating generic time entries.
-
-Actual file chain with input/output at each stage:
-
-1. lib/time_manager_web/endpoint.ex
-   - Input: raw HTTP request with JSON body for a clock event
-   - Output: parsed request forwarded to the router
-
-2. lib/time_manager_web/router.ex
-   - Input: `/api/clocks/42`
-   - Output: route resolves to `ClockController.create`
-
-3. lib/time_manager_web/controllers/clock_controller.ex
-   - Input: `%{"userID" => "42"}`
-   - Output: calls `Clocks.get_clock_by_user("42")`, builds `clock_params`, then calls `Clocks.create_clock(clock_params)`
-
-4. lib/time_manager/clocks.ex
-   - Input: `user_id = "42"`
-   - Output: gets latest clock row for that user and decides next `status`
-
-5. lib/time_manager/clocks/clock.ex
-   - Input: `%{"time" => now, "status" => true, "user_id" => 42}`
-   - Output: validated changeset or validation error
-
-6. lib/time_manager/repo.ex
-   - Input: valid changeset
-   - Output: inserted row in PostgreSQL `clocks` table
-
-7. priv/repo/migrations/20260922141946_create_clocks.exs
-   - Input: migration run during setup
-   - Output: `clocks` table exists with `time`, `status`, and `user_id`
-
-8. lib/time_manager_web/controllers/clock_json.ex
-   - Input: `%Clock{}` struct from the DB
-   - Output: JSON payload shaped like `{ data: %{id, time, status} }`
-
-Example request at the network boundary:
-
-```json
-{
-  "userID": "42"
-}
-```
-
-Example output at the end of the pipeline:
-
-```json
-{
-  "data": {
-    "id": 12,
-    "time": "2026-10-03T13:00:00Z",
-    "status": true
-  }
-}
-```
-
-Example validation result if data is bad:
-
-```json
-{
-  "errors": {
-    "time": ["can't be blank"],
-    "status": ["can't be blank"],
-    "user_id": ["can't be blank"]
-  }
-}
-```
-
----
-
-## 13. Request lifecycle example: creating a workingtime
-
-```mermaid
-flowchart LR
-  A[Frontend sends POST /api/workingtime/:userID] --> B[Router]
-  B --> C[WorkingtimeController.create]
-  C --> D[Parse user_id from URL]
-  D --> E[TimeManager.Workingtimes.create_workingtime]
-  E --> F[Workingtime.changeset]
-  F --> G[Repo.insert]
-  G --> H[(workingtime table)]
-  H --> G
-  G --> E
-  E --> C
-  C --> I[WorkingtimeJSON.show]
-  I --> J[JSON response]
-```
-
-This is how a work session or time interval is stored.
-
-Actual file chain with input/output at each stage:
-
-1. lib/time_manager_web/endpoint.ex
-   - Input: raw HTTP request with JSON body containing a work interval
-   - Output: parsed request forwarded to the router
-
-2. lib/time_manager_web/router.ex
-   - Input: `/api/workingtime/42`
-   - Output: route resolves to `WorkingtimeController.create`
-
-3. lib/time_manager_web/controllers/workingtime_controller.ex
-   - Input: `%{"userID" => "42", "workingtime" => %{"start" => "2026-10-03T09:00:00Z", "end" => "2026-10-03T17:00:00Z"}}`
-   - Output: adds `"user_id" => 42` and calls `Workingtimes.create_workingtime(workingtime_params)`
-
-4. lib/time_manager/workingtimes.ex
-   - Input: `%{"start" => "...", "end" => "...", "user_id" => 42}`
-   - Output: `%Workingtime{}` built and passed to `Workingtime.changeset` then `Repo.insert()`
-
-5. lib/time_manager/workingtimes/workingtime.ex
-   - Input: `%{"start" => "2026-10-03T09:00:00Z", "end" => "2026-10-03T17:00:00Z", "user_id" => 42}`
-   - Output: validated changeset or validation error
-
-6. lib/time_manager/repo.ex
-   - Input: valid changeset
-   - Output: inserted row in PostgreSQL `workingtime` table
-
-7. priv/repo/migrations/20260922142347_create_workingtime.exs
-   - Input: migration run during setup
-   - Output: `workingtime` table exists with `start`, `end`, and `user_id`
-
-8. lib/time_manager_web/controllers/workingtime_json.ex
-   - Input: `%Workingtime{}` struct from the DB
-   - Output: JSON payload shaped like `{ data: %{id, start, end} }`
-
-Example request at the network boundary:
+The dashboard then displays the clock state. When the user clocks out or switches from work to break, the frontend records the interval through `POST /api/workingtime/42`:
 
 ```json
 {
   "workingtime": {
-    "start": "2026-10-03T09:00:00Z",
-    "end": "2026-10-03T17:00:00Z"
+    "start": "2026-10-09T08:30:00Z",
+    "end": "2026-10-09T12:00:00Z",
+    "kind": "work"
   }
 }
 ```
 
-Example output at the end of the pipeline:
+## 10. Authorization: implemented behavior and review points
 
-```json
-{
-  "data": {
-    "id": 7,
-    "start": "2026-10-03T09:00:00Z",
-    "end": "2026-10-03T17:00:00Z"
-  }
-}
+`Accounts.can_access_user_data?/2` grants time-data reads to admins for any user, managers for themselves and their assigned employees, and employees for themselves. The clock `show` and working-time `index` actions call this check.
+
+Some other routes are authenticated but do not currently enforce equivalent ownership checks. In particular, clock creation and working-time create/show/update/delete should be reviewed before relying on them as secure multi-user operations. User `show` is also authenticated but does not currently limit which user's ID can be requested. The role-based router guard in the Vue app is for navigation; API authorization must be enforced server-side.
+
+This distinction matters: having a valid token proves who made the request, but it does not by itself prove that the user may act on the requested user's records.
+
+## 11. JSON serializers
+
+- `lib/time_manager_web/controllers/user_json.ex` shapes user list/detail responses.
+- `lib/time_manager_web/controllers/clock_json.ex` shapes clock responses and derives a fallback state for older rows with no state value.
+- `lib/time_manager_web/controllers/workingtime_json.ex` returns interval kind, defaulting older rows to `work`.
+- `fallback_controller.ex`, `changeset_json.ex`, and `error_json.ex` shape common error responses.
+
+Serializers keep the frontend response format separate from Ecto's internal schema representation.
+
+## 12. Tests and useful commands
+
+Tests are under `test/`, split between context tests and controller tests. Fixtures in `test/support/fixtures/` create test users, clocks, and working-time rows; `test/support/conn_case.ex` and `data_case.ex` provide test setup.
+
+Run commands from `backend/project/`:
+
+```sh
+mix test
+mix test test/time_manager/accounts_test.exs
+mix ecto.migrate
+mix run priv/repo/seeds.exs
 ```
 
-Example validation result if data is bad:
+The test suite should be updated alongside authorization and state-transition changes, especially for cross-user access and inactive accounts.
 
-```json
-{
-  "errors": {
-    "start": ["can't be blank"],
-    "end": ["can't be blank"],
-    "user_id": ["can't be blank"]
-  }
-}
-```
+## 13. File map
 
----
+| Concern | Main files |
+| --- | --- |
+| Startup/configuration | `lib/time_manager/application.ex`, `lib/time_manager/repo.ex`, `config/` |
+| Users and authentication | `lib/time_manager/accounts.ex`, `lib/time_manager/accounts/user.ex`, `lib/time_manager_web/controllers/auth_controller.ex`, `auth_plug.ex` |
+| HTTP routes and user API | `lib/time_manager_web/router.ex`, `user_controller.ex`, `user_json.ex` |
+| Clock state | `lib/time_manager/clocks.ex`, `clocks/clock.ex`, `clock_controller.ex`, `clock_json.ex` |
+| Work/break records | `lib/time_manager/workingtimes.ex`, `workingtimes/workingtime.ex`, `workingtime_controller.ex`, `workingtime_json.ex` |
+| Database changes | `priv/repo/migrations/` |
+| Tests and fixtures | `test/`, `test/support/fixtures/` |
 
-## 14. The overall pattern in one sentence
-
-The backend follows the standard Phoenix pattern:
-
-- route -> controller -> context -> schema -> repo -> database
-- then response is serialized back as JSON
-
-That is the core architecture of this project.
-
----
-
-## 15. Best files to remember
-
-If you only remember a few files, remember these:
-
-- lib/time_manager/application.ex
-- lib/time_manager/repo.ex
-- lib/time_manager/accounts.ex
-- lib/time_manager/clocks.ex
-- lib/time_manager/workingtimes.ex
-- lib/time_manager_web/router.ex
-- lib/time_manager_web/controllers/user_controller.ex
-- lib/time_manager_web/controllers/clock_controller.ex
-- lib/time_manager_web/controllers/workingtime_controller.ex
-- priv/repo/migrations
-
----
-
-## 16. Final takeaway
-
-This project is not just “random files.”
-
-It follows a very consistent structure:
-
-- every resource has a schema
-- every resource has a context
-- every resource has a controller
-- every resource is stored in Postgres
-- every response is serialized as JSON
-
-That is the key pattern to understand in this backend.

@@ -1,7 +1,7 @@
 <template>
   <AppShell :navigation="navigation" :active-tab="activeTab" @navigate="activeTab = $event" @logout="disconnect">
         <template v-if="activeTab === 'home'">
-          <div class="page-heading">
+          <div class="page-heading home-heading">
             <div>
               <p class="eyebrow">{{ greeting }}</p>
               <h1>{{ displayName }} <span aria-hidden="true">👋</span></h1>
@@ -559,6 +559,7 @@ export default {
 @media (max-width: 560px) {
   .topbar { height: 62px; }
   .page-content { padding-top: 20px; padding-bottom: 24px; }
+  .home-heading { padding-top: 24px; }
   .page-heading h1 { font-size: 30px; }
   .card h2 { font-size: 17px; }
   .large-time { font-size: 36px; }

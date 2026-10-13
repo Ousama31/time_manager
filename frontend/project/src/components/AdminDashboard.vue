@@ -6,7 +6,7 @@
             <p class="admin-eyebrow">PEOPLE &amp; ACCESS</p>
             <h1>{{ activeSection === 'teams' ? 'Teams' : 'User Management' }}</h1>
             <p v-if="activeSection === 'teams'" class="intro-copy">Managers and their assigned employees.</p>
-            <p v-if="activeSection !== 'teams'" class="intro-copy">Manage your team, roles, and access in one place.</p>
+            <p v-else class="intro-copy">Manage your team, roles, and access in one place.</p>
           </div>
         </div>
 
@@ -17,15 +17,15 @@
           <div v-else-if="managerTeams.length === 0" class="teams-empty">No managers are registered yet.</div>
           <div v-else class="teams-grid">
             <article v-for="team in managerTeams" :key="team.manager.id" class="team-card">
-              <header class="team-manager"><InitialAvatar tone="tone-lilac" :initials="team.manager.initials" /><span class="user-identity"><strong>{{ team.manager.name }}</strong><small>{{ team.manager.email }}</small></span><span class="role-badge role-manager">Manager</span></header>
+              <header class="team-manager"><button type="button" class="user-stats-trigger team-stats-trigger" :aria-label="`View statistics for ${team.manager.name}`" @click="openStatistics(team.manager)"><InitialAvatar tone="tone-lilac" :initials="team.manager.initials" /><span class="user-identity"><strong>{{ team.manager.name }}</strong><small>{{ team.manager.email }}</small></span></button><span class="role-badge role-manager">Manager</span></header>
               <div class="team-members-heading"><span>TEAM MEMBERS</span><span class="count-pill">{{ team.employees.length }}</span></div>
               <ul v-if="team.employees.length" class="team-members">
-                <li v-for="employee in team.employees" :key="employee.id"><InitialAvatar :tone="employee.avatarTone" :initials="employee.initials" /><span class="user-identity"><strong>{{ employee.name }}</strong><small>{{ employee.email }}</small></span><span class="status-badge" :class="employee.status === 'Active' ? 'status-active' : 'status-inactive'"><i></i>{{ employee.status }}</span></li>
+                <li v-for="employee in team.employees" :key="employee.id"><button type="button" class="user-stats-trigger team-stats-trigger" :aria-label="`View statistics for ${employee.name}`" @click="openStatistics(employee)"><InitialAvatar :tone="employee.avatarTone" :initials="employee.initials" /><span class="user-identity"><strong>{{ employee.name }}</strong><small>{{ employee.email }}</small></span></button><span class="status-badge" :class="employee.status === 'Active' ? 'status-active' : 'status-inactive'"><i></i>{{ employee.status }}</span></li>
               </ul>
               <p v-else class="team-empty-members">No employees assigned yet.</p>
             </article>
           </div>
-          <article v-if="unassignedEmployees.length" class="unassigned-card"><h3>Unassigned employees <span class="count-pill">{{ unassignedEmployees.length }}</span></h3><ul class="team-members"><li v-for="employee in unassignedEmployees" :key="employee.id"><InitialAvatar :tone="employee.avatarTone" :initials="employee.initials" /><span class="user-identity"><strong>{{ employee.name }}</strong><small>{{ employee.email }}</small></span><span class="status-badge" :class="employee.status === 'Active' ? 'status-active' : 'status-inactive'"><i></i>{{ employee.status }}</span></li></ul></article>
+          <article v-if="unassignedEmployees.length" class="unassigned-card"><h3>Unassigned employees <span class="count-pill">{{ unassignedEmployees.length }}</span></h3><ul class="team-members"><li v-for="employee in unassignedEmployees" :key="employee.id"><button type="button" class="user-stats-trigger team-stats-trigger" :aria-label="`View statistics for ${employee.name}`" @click="openStatistics(employee)"><InitialAvatar :tone="employee.avatarTone" :initials="employee.initials" /><span class="user-identity"><strong>{{ employee.name }}</strong><small>{{ employee.email }}</small></span></button><span class="status-badge" :class="employee.status === 'Active' ? 'status-active' : 'status-inactive'"><i></i>{{ employee.status }}</span></li></ul></article>
         </section>
 
         <section v-if="activeSection === 'users'" class="users-panel" aria-labelledby="users-heading">
@@ -43,7 +43,7 @@
               <thead><tr><th scope="col" class="user-column">USER <button aria-label="Sort users">↕</button></th><th scope="col">ROLE</th><th scope="col">STATUS</th><th scope="col">JOINED DATE <button aria-label="Sort by joined date">↕</button></th><th scope="col" class="actions-heading">ACTION</th></tr></thead>
               <tbody>
                 <tr v-for="user in filteredUsers" :key="user.email">
-                  <td class="user-cell"><InitialAvatar :tone="user.avatarTone" :initials="user.initials" /><span class="user-identity"><strong>{{ user.name }}</strong><small>{{ user.email }}</small></span></td>
+                  <td class="user-cell"><button type="button" class="user-stats-trigger" :aria-label="`View statistics for ${user.name}`" @click="openStatistics(user)"><InitialAvatar :tone="user.avatarTone" :initials="user.initials" /><span class="user-identity"><strong>{{ user.name }}</strong><small>{{ user.email }}</small></span></button></td>
                   <td data-label="Role"><span class="role-badge" :class="roleClass(user.role)"><svg v-if="user.role === 'Admin'" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 18 1.2-8 4.1 3.4L12 6l1.7 7.4 4.1-3.4L19 18H5ZM5 21h14"/></svg><svg v-else-if="user.role === 'Manager'" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.2-2.9 7.5-7 9-4.1-1.5-7-4.8-7-9V6l7-2.5Z"/><path d="m9 12 2 2 4-4"/></svg><svg v-else viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>{{ user.role }}</span></td>
                   <td data-label="Status"><span class="status-badge" :class="user.status === 'Active' ? 'status-active' : 'status-inactive'"><i></i>{{ user.status }}</span></td>
                   <td class="joined-cell" data-label="Joined">{{ user.joined }}</td>
@@ -78,6 +78,31 @@
         </aside>
       </div>
     </Transition>
+    <Transition name="drawer-fade">
+      <div v-if="statsUser" class="drawer-backdrop" @click.self="closeStatistics" @keydown.esc="closeStatistics">
+        <aside class="role-drawer" role="dialog" aria-modal="true" aria-labelledby="statistics-drawer-title">
+          <header class="drawer-header"><div><p class="drawer-eyebrow">{{ isManagerStats ? 'TEAM STATISTICS' : 'MEMBER STATISTICS' }}</p><h2 id="statistics-drawer-title">{{ statsUser.name }}</h2><p>{{ isManagerStats ? 'Team performance' : statsUser.email }}</p></div><button class="drawer-close" aria-label="Close statistics" @click="closeStatistics"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+          <div class="drawer-body statistics-drawer-body">
+            <div v-if="statsError" class="inline-notice error-notice" role="alert">{{ statsError }}</div>
+            <div v-if="statsLoading" class="teams-empty">Loading statistics…</div>
+            <div v-else-if="!statsError" class="statistics-content">
+              <div v-if="isManagerStats" class="statistics-summary statistics-summary--team">
+                <article class="statistics-metric"><span>Employees</span><strong>{{ statsTeamMembers.length }}</strong></article>
+                <article class="statistics-metric"><span>Active employees</span><strong>{{ statsActiveTeamCount }}</strong></article>
+                <article class="statistics-metric"><span>Team hours today</span><strong>{{ formatMinutes(statsTodayMinutes) }}</strong></article>
+                <article class="statistics-metric"><span>Team hours this week</span><strong>{{ formatMinutes(statsWeekMinutes) }}</strong></article>
+              </div>
+              <div v-else class="statistics-summary">
+                <article class="statistics-metric"><span>Today</span><strong>{{ formatMinutes(statsTodayMinutes) }}</strong></article>
+                <article class="statistics-metric"><span>This week</span><strong>{{ formatMinutes(statsWeekMinutes) }}</strong></article>
+                <article class="statistics-metric"><span>Current status</span><strong>{{ statsClock?.state === 'break' ? 'On break' : statsClock?.status ? 'Working' : 'Off the clock' }}</strong></article>
+              </div>
+              <article class="statistics-chart"><div><h3>{{ isManagerStats ? 'Team working hours this week' : 'Working hours this week' }}</h3><strong>{{ formatMinutes(statsWeekMinutes) }}</strong></div><WeeklyHoursChart variant="manager" :days="statsWeekBars" :label="`${isManagerStats ? 'Team' : 'Selected member'} hours this week: ${formatMinutes(statsWeekMinutes)}`" /></article>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </Transition>
   </AppShell>
 </template>
 
@@ -86,10 +111,37 @@ import api from '../api'
 import { getAvatarTone, getDisplayName, getInitials } from '../utils/identity'
 import InitialAvatar from './InitialAvatar.vue'
 import AppShell from './AppShell.vue'
+import WeeklyHoursChart from './WeeklyHoursChart.vue'
+
+function startOfLocalDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function startOfLocalWeek(date) {
+  const start = startOfLocalDay(date)
+  start.setDate(start.getDate() - (start.getDay() + 6) % 7)
+  return start
+}
+
+function overlappingMinutes(startValue, endValue, rangeStart, rangeEnd) {
+  const start = Math.max(new Date(startValue).getTime(), rangeStart.getTime())
+  const end = Math.min(new Date(endValue).getTime(), rangeEnd.getTime())
+  return Number.isFinite(start) && Number.isFinite(end) && end > start ? Math.floor((end - start) / 60000) : 0
+}
+
+function sumMinutes(records, rangeStart, rangeEnd, activeClock, now) {
+  const recorded = records.reduce((total, record) => {
+    if (record.kind === 'break' || !record.start || !record.end) return total
+    return total + overlappingMinutes(record.start, record.end, rangeStart, rangeEnd)
+  }, 0)
+  return activeClock?.status && activeClock.time
+    ? recorded + overlappingMinutes(activeClock.time, now, rangeStart, rangeEnd)
+    : recorded
+}
 
 export default {
   name: 'AdminDashboard',
-  components: { AppShell, InitialAvatar },
+  components: { AppShell, InitialAvatar, WeeklyHoursChart },
   data() {
     return {
       userId: sessionStorage.getItem('userId'),
@@ -97,12 +149,21 @@ export default {
       users: [],
       loadingUsers: true,
       usersError: '',
+      selectedStatsUserId: '',
+      statsRecords: [],
+      statsClock: null,
+      statsTeamMembers: [],
+      statsLoading: false,
+      statsError: '',
+      statsRequestId: 0,
+      now: new Date(),
       savingRole: false,
       searchQuery: '',
       statusFilter: 'All',
       roleFilter: 'All',
       activeSection: 'teams',
       editingUser: null,
+      statsUser: null,
       selectedRole: 'Employee',
       confirmRoleChange: false,
       roleOptions: [
@@ -150,6 +211,41 @@ export default {
     },
     unassignedEmployees() {
       return this.users.filter((user) => user.role === 'Employee' && !user.managerId)
+    },
+    isManagerStats() {
+      return this.statsUser?.role === 'Manager'
+    },
+    statsActiveTeamCount() {
+      return this.statsTeamMembers.filter((member) => member.status === 'Active').length
+    },
+    statsTodayMinutes() {
+      if (this.isManagerStats) {
+        const dayStart = startOfLocalDay(this.now)
+        return this.statsTeamMembers.reduce((total, member) => total + sumMinutes(member.records, dayStart, this.now, member.clock, this.now), 0)
+      }
+      return sumMinutes(this.statsRecords, startOfLocalDay(this.now), this.now, this.statsClock, this.now)
+    },
+    statsWeekMinutes() {
+      if (this.isManagerStats) {
+        const weekStart = startOfLocalWeek(this.now)
+        return this.statsTeamMembers.reduce((total, member) => total + sumMinutes(member.records, weekStart, this.now, member.clock, this.now), 0)
+      }
+      return sumMinutes(this.statsRecords, startOfLocalWeek(this.now), this.now, this.statsClock, this.now)
+    },
+    statsWeekBars() {
+      const monday = startOfLocalWeek(this.now)
+      const days = Array.from({ length: 7 }, (_, index) => {
+        const dayStart = new Date(monday)
+        dayStart.setDate(monday.getDate() + index)
+        const dayEnd = new Date(dayStart)
+        dayEnd.setDate(dayStart.getDate() + 1)
+        const end = dayEnd > this.now ? this.now : dayEnd
+        const sources = this.isManagerStats ? this.statsTeamMembers : [{ records: this.statsRecords, clock: this.statsClock }]
+        const minutes = sources.reduce((total, member) => total + sumMinutes(member.records, dayStart, end, member.clock, this.now), 0)
+        return { key: index, label: new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(dayStart), minutes }
+      })
+      const max = Math.max(...days.map((day) => day.minutes), 1)
+      return days.map((day) => ({ ...day, height: day.minutes ? Math.max(8, Math.round(day.minutes / max * 100)) : 0 }))
     }
   },
   mounted() {
@@ -195,6 +291,65 @@ export default {
       } finally {
         this.loadingUsers = false
       }
+    },
+    async loadStatistics() {
+      const userId = this.selectedStatsUserId
+      const requestId = ++this.statsRequestId
+      if (!userId) {
+        this.statsRecords = []
+        this.statsClock = null
+        this.statsError = ''
+        this.statsLoading = false
+        return
+      }
+      this.statsLoading = true
+      this.statsError = ''
+      try {
+        if (this.statsUser?.role === 'Manager') {
+          const employees = this.users.filter((user) => user.role === 'Employee' && String(user.managerId) === String(userId))
+          const members = await Promise.all(employees.map(async (employee) => {
+            const [recordsResponse, clockResponse] = await Promise.all([
+              api.get(`/workingtime/${employee.id}`),
+              api.get(`/clocks/${employee.id}`)
+            ])
+            return { ...employee, records: recordsResponse.data.data || [], clock: clockResponse.data.data }
+          }))
+          if (requestId !== this.statsRequestId) return
+          this.statsTeamMembers = members
+          this.statsRecords = []
+          this.statsClock = null
+        } else {
+          const [recordsResponse, clockResponse] = await Promise.all([
+            api.get(`/workingtime/${userId}`),
+            api.get(`/clocks/${userId}`)
+          ])
+          if (requestId !== this.statsRequestId) return
+          this.statsRecords = recordsResponse.data.data || []
+          this.statsClock = clockResponse.data.data
+          this.statsTeamMembers = []
+        }
+        this.now = new Date()
+      } catch (error) {
+        if (requestId !== this.statsRequestId) return
+        this.statsError = error.response?.data?.error || 'Could not load this member’s statistics. Please try again.'
+      } finally {
+        if (requestId === this.statsRequestId) this.statsLoading = false
+      }
+    },
+    openStatistics(user) {
+      this.statsUser = user
+      this.selectedStatsUserId = String(user.id)
+      this.statsTeamMembers = []
+      this.loadStatistics()
+    },
+    closeStatistics() {
+      this.statsUser = null
+      this.statsRequestId += 1
+      this.statsLoading = false
+    },
+    formatMinutes(minutes) {
+      const safeMinutes = Math.max(0, Math.floor(minutes || 0))
+      return `${Math.floor(safeMinutes / 60)}h ${String(safeMinutes % 60).padStart(2, '0')}m`
     },
     roleClass(role) {
       return { Admin: 'role-admin', Manager: 'role-manager', Employee: 'role-member' }[role] || 'role-member'
@@ -377,6 +532,10 @@ export default {
 .users-table tbody tr { transition: background .14s ease; }
 .users-table tbody tr:hover { background: #fbfcfe; }
 .user-cell { display: flex; align-items: center; gap: 10px; }
+.user-stats-trigger { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.user-stats-trigger:focus-visible { border-radius: 8px; outline: 2px solid var(--app-accent); outline-offset: 3px; }
+.user-stats-trigger:hover .user-identity strong { color: var(--app-accent-strong); }
+.team-stats-trigger { flex: 1; }
 .user-avatar, .drawer-avatar { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border: 1px solid rgb(35 49 70 / 5%); border-radius: 50%; font-size: 9px; font-weight: 700; }
 .user-identity { display: grid; gap: 4px; }
 .user-identity strong { color: #354153; font-size: 10px; font-weight: 650; }
@@ -716,5 +875,22 @@ export default {
   .team-members .user-identity small { font-size: 11px; }
   .action-buttons { gap: 6px; }
   .manage-button, .user-action-button { padding-inline: 7px; font-size: 11px; }
+}
+
+.statistics-content { padding: 0; }
+.statistics-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.statistics-summary--team { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.statistics-metric { display: grid; min-width: 0; gap: 8px; padding: 17px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-background); }
+.statistics-metric span { color: var(--app-muted); font-size: 13px; }
+.statistics-metric strong { overflow-wrap: anywhere; color: var(--app-text); font-size: 22px; }
+.statistics-chart { margin-top: 14px; padding: 18px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-surface); }
+.statistics-chart > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.statistics-chart h3 { margin: 0; color: var(--app-text); font-size: 15px; }
+.statistics-chart > div > strong { color: var(--app-text); font-size: 16px; }
+
+@media (max-width: 760px) {
+  .statistics-summary { grid-template-columns: 1fr; gap: 8px; }
+  .statistics-metric { grid-template-columns: 1fr auto; align-items: center; padding: 13px; }
+  .statistics-chart { padding: 14px; }
 }
 </style>

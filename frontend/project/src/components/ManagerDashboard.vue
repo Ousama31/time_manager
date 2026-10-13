@@ -25,8 +25,8 @@
             <header class="team-panel-heading"><div><h2 id="team-heading">Team members <span class="count-pill">{{ filteredTeam.length }}</span></h2><p>Clock status refreshes automatically; hours come from recorded work times.</p></div><label class="team-search"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg><input v-model="searchQuery" type="search" placeholder="Search team…" aria-label="Search team members" /></label></header>
             <div v-if="loading" class="team-empty">Loading your team…</div>
             <div v-else-if="!filteredTeam.length" class="team-empty">{{ team.length ? 'No team members match your search.' : 'No employees are assigned to your team yet.' }}</div>
-            <div v-else class="team-table-scroll"><table class="team-table"><thead><tr><th>EMPLOYEE</th><th>STATUS</th><th>TODAY</th><th>THIS WEEK</th><th></th></tr></thead><tbody>
-              <tr v-for="member in filteredTeam" :key="member.id"><td><div class="employee-cell"><InitialAvatar variant="employee-avatar" :tone="member.avatarTone" :initials="member.initials" /><span><strong>{{ member.name }}</strong><small>{{ member.email }}</small></span></div></td><td><span class="status-group"><span class="work-status" :class="member.status === 'Inactive' ? 'suspended' : member.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ member.status === 'Inactive' ? 'Suspended' : member.clockState !== 'off' ? 'Working' : 'Off the clock' }}</span><span v-if="member.status === 'Active' && member.clockState === 'break'" class="break-indicator"><i></i>On break</span></span></td><td>{{ formatMinutes(memberTodayMinutes(member)) }}</td><td>{{ formatMinutes(memberWeekMinutes(member)) }}</td><td class="member-actions"><button class="view-button" @click="selectedMember = member">View</button></td></tr>
+            <div v-else class="team-table-scroll"><table class="team-table"><thead><tr><th>EMPLOYEE</th><th>STATUS</th><th>TODAY</th><th>THIS WEEK</th></tr></thead><tbody>
+              <tr v-for="member in filteredTeam" :key="member.id"><td><button type="button" class="employee-cell" :aria-label="`View statistics for ${member.name}`" @click="selectedMember = member"><InitialAvatar variant="employee-avatar" :tone="member.avatarTone" :initials="member.initials" /><span><strong>{{ member.name }}</strong><small>{{ member.email }}</small></span></button></td><td><span class="status-group"><span class="work-status" :class="member.status === 'Inactive' ? 'suspended' : member.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ member.status === 'Inactive' ? 'Suspended' : member.clockState !== 'off' ? 'Working' : 'Off the clock' }}</span><span v-if="member.status === 'Active' && member.clockState === 'break'" class="break-indicator"><i></i>On break</span></span></td><td>{{ formatMinutes(memberTodayMinutes(member)) }}</td><td>{{ formatMinutes(memberWeekMinutes(member)) }}</td></tr>
             </tbody></table></div>
           </section>
         </section>
@@ -37,7 +37,7 @@
         </section>
       </div>
     </div>
-    <Transition name="detail-fade"><div v-if="selectedMember" class="detail-backdrop" @click.self="selectedMember = null"><section class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-heading"><header><div><p class="eyebrow">TEAM MEMBER</p><h2 id="detail-heading">{{ selectedMember.name }}</h2><p>{{ selectedMember.email }}</p></div><button class="close-button" aria-label="Close details" @click="selectedMember = null">×</button></header><div class="detail-metrics"><div><small>Today</small><strong>{{ formatMinutes(memberTodayMinutes(selectedMember)) }}</strong></div><div><small>This week</small><strong>{{ formatMinutes(memberWeekMinutes(selectedMember)) }}</strong></div></div><div class="detail-clock"><span class="status-group"><span class="work-status" :class="selectedMember.status === 'Inactive' ? 'suspended' : selectedMember.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ selectedMember.status === 'Inactive' ? 'Suspended' : selectedMember.clockState !== 'off' ? 'Working now' : 'Off the clock' }}</span><span v-if="selectedMember.status === 'Active' && selectedMember.clockState === 'break'" class="break-indicator"><i></i>On break</span></span><small v-if="selectedMember.clockedInSince">{{ selectedMember.clockState === 'break' ? 'Break started' : 'Since' }} {{ formatTime(selectedMember.clockedInSince) }}</small></div></section></div></Transition>
+    <Transition name="detail-fade"><div v-if="selectedMember" class="detail-backdrop" @click.self="selectedMember = null"><section class="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-heading"><header><div><p class="eyebrow">TEAM MEMBER</p><h2 id="detail-heading">{{ selectedMember.name }}</h2><p>{{ selectedMember.email }}</p></div><button class="close-button" aria-label="Close details" @click="selectedMember = null">×</button></header><div class="detail-metrics"><div><small>Today</small><strong>{{ formatMinutes(memberTodayMinutes(selectedMember)) }}</strong></div><div><small>This week</small><strong>{{ formatMinutes(memberWeekMinutes(selectedMember)) }}</strong></div></div><div class="detail-chart"><div><h3>Working hours this week</h3><strong>{{ formatMinutes(memberWeekMinutes(selectedMember)) }}</strong></div><WeeklyHoursChart variant="manager" :days="selectedMemberWeekBars" :label="`${selectedMember.name} hours this week: ${formatMinutes(memberWeekMinutes(selectedMember))}`" /></div><div class="detail-clock"><span class="status-group"><span class="work-status" :class="selectedMember.status === 'Inactive' ? 'suspended' : selectedMember.clockState !== 'off' ? 'working' : 'off-clock'"><i></i>{{ selectedMember.status === 'Inactive' ? 'Suspended' : selectedMember.clockState !== 'off' ? 'Working now' : 'Off the clock' }}</span><span v-if="selectedMember.status === 'Active' && selectedMember.clockState === 'break'" class="break-indicator"><i></i>On break</span></span><small v-if="selectedMember.clockedInSince">{{ selectedMember.clockState === 'break' ? 'Break started' : 'Since' }} {{ formatTime(selectedMember.clockedInSince) }}</small></div></section></div></Transition>
   </AppShell>
 </template>
 
@@ -145,6 +145,21 @@ export default {
       })
       const max = Math.max(...values.map((day) => day.minutes), 1)
       return values.map((day) => ({ ...day, height: day.minutes ? Math.max(8, Math.round(day.minutes / max * 100)) : 0 }))
+    },
+    selectedMemberWeekBars() {
+      if (!this.selectedMember) return []
+      const monday = startOfLocalWeek(this.now)
+      const days = Array.from({ length: 7 }, (_, index) => {
+        const dayStart = new Date(monday)
+        dayStart.setDate(monday.getDate() + index)
+        const dayEnd = new Date(dayStart)
+        dayEnd.setDate(dayStart.getDate() + 1)
+        const end = dayEnd > this.now ? this.now : dayEnd
+        const minutes = sumMinutes(this.selectedMember.records, dayStart, end, this.selectedMember.clock, this.now)
+        return { key: index, label: new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(dayStart), minutes }
+      })
+      const max = Math.max(...days.map((day) => day.minutes), 1)
+      return days.map((day) => ({ ...day, height: day.minutes ? Math.max(8, Math.round(day.minutes / max * 100)) : 0 }))
     }
   },
   mounted() {
@@ -329,7 +344,9 @@ export default {
 .team-table th:first-child, .team-table td:first-child { padding-left: 16px; }
 .team-table td { height: 51px; padding: 0 13px; border-bottom: 1px solid #f0f2f5; color: #536071; font-size: 9px; }
 .team-table tbody tr:last-child td { border-bottom: 0; }
-.employee-cell { display: flex; align-items: center; gap: 9px; }
+.employee-cell { display: flex; width: 100%; align-items: center; gap: 9px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.employee-cell:focus-visible { border-radius: 8px; outline: 2px solid var(--app-accent); outline-offset: 3px; }
+.employee-cell:hover strong { color: var(--app-accent-strong); }
 .employee-avatar { display: grid; width: 29px; height: 29px; flex: 0 0 29px; place-items: center; border-radius: 50%; font-size: 8px; font-weight: 700; }
 .employee-cell > span:last-child { display: grid; gap: 3px; }
 .employee-cell strong { color: #354153; font-size: 9px; font-weight: 650; }
@@ -386,6 +403,10 @@ export default {
 .detail-dialog header p:last-child, .detail-metrics small, .detail-clock small { color: var(--app-muted); font-size: 11px; }
 .detail-metrics strong { color: var(--app-text); font-size: 16px; }
 .detail-metrics > div { border-color: var(--app-border); background: var(--app-background); }
+.detail-chart { margin-top: 14px; padding: 12px; border: 1px solid var(--app-border); border-radius: 9px; }
+.detail-chart > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.detail-chart h3 { margin: 0; color: var(--app-text); font-size: 12px; }
+.detail-chart > div > strong { color: var(--app-text); font-size: 13px; }
 .team-search { border-color: var(--app-border); background: var(--app-surface); }
 .team-search input { color: var(--app-text); font-size: 12px; }
 .team-search:focus-within { border-color: var(--app-accent); box-shadow: 0 0 0 3px rgb(22 132 248 / 12%); }

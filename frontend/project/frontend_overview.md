@@ -1,461 +1,235 @@
-# Frontend Overview
+# Time Manager Frontend Overview
 
-This document explains the frontend architecture of the Time Manager Vue app in simple terms.
+This guide explains how the current Time Manager web app is structured and how its employee, manager, and administrator screens use the backend. The app is a Vue 3 single-page application built with Vite. It uses Axios for HTTP requests and CSS in Vue components plus a shared stylesheet for its light, responsive interface.
 
----
+## 1. What the frontend does
 
-## 1. High-level idea
-
-The frontend is a Vue 3 app built with Vite.
-
-A typical interaction follows this pattern:
+The frontend presents role-specific screens and turns user actions into API requests. It does not read or write PostgreSQL directly.
 
 ```mermaid
 flowchart LR
-  A[User clicks button/input] --> B[Component]
-  B --> C[Axios request]
-  C --> D[Backend API]
-  D --> E[Backend response]
-  E --> F[Component state update]
-  F --> G[UI re-renders]
+  Person[Employee / Manager / Admin] --> UI[Vue component]
+  UI --> State[Component state]
+  UI -->|Axios request| Client[src/api.js]
+  Client -->|JSON + auth token| API[Phoenix API]
+  API -->|JSON response| Client
+  Client --> State
+  State --> Render[Vue updates the page]
 ```
 
-In plain language:
+For example, an employee clicking **Break** calls the clock API. The response updates the screen's current state, and when the work segment ends the frontend also saves that completed interval as a break or work record.
 
-- the user interacts with the page
-- a Vue component captures the event
-- the component calls the backend with `axios`
-- the backend responds with JSON
-- the component updates local state
-- Vue re-renders the screen
+## 2. Starting point and route structure
 
----
+- `src/main.js` imports the global CSS, creates the Vue application, and mounts it into `index.html`.
+- `src/App.vue` is the root component and displays the route selected by Vue Router using `<router-view />`.
+- `src/router.js` maps URLs to screens and checks whether a protected page has a token in browser session storage.
 
-## 2. App entry point
+| Path | Component | Intended role |
+| --- | --- | --- |
+| `/` | `Home.vue` | Employee |
+| `/manager` | `ManagerDashboard.vue` | Manager |
+| `/admin` | `AdminDashboard.vue` | Administrator |
+| `/login` | `SignIn.vue` | Signed-out user |
+| `/sign_up` | `SignUp.vue` | New account |
+| `/sign_in` | Redirects to `/login` | Legacy route alias |
 
-### src/main.js
+The router reads `xsrfToken` and `role` from `sessionStorage`; based on role it sends signed-in users to `/`, `/manager`, or `/admin`. This keeps navigation aligned with the user's role. The backend remains responsible for enforcing access to data and actions.
 
-This is the Vue application entry file.
+## 3. Shared design and components
 
-```js
-import './assets/main.css'
+All three authenticated dashboards use the same page shell so navigation and account controls stay consistent while the page content changes.
 
-import { createApp } from 'vue'
-import App from './App.vue'
-
-createApp(App).mount('#app')
+```mermaid
+flowchart TB
+  App[App.vue] --> Router[Vue Router]
+  Router --> Employee[Home.vue]
+  Router --> Manager[ManagerDashboard.vue]
+  Router --> Admin[AdminDashboard.vue]
+  Employee --> Shell[AppShell.vue]
+  Manager --> Shell
+  Admin --> Shell
+  Shell --> Nav[AppNavItem.vue]
+  Employee --> Avatar[InitialAvatar.vue]
+  Manager --> Avatar
+  Admin --> Avatar
+  Employee --> Chart[WeeklyHoursChart.vue]
+  Manager --> Chart
 ```
 
-This does three important things:
+Reusable files:
 
-- imports the CSS
-- creates the Vue app
-- mounts it into the page (`#app`)
+- `src/components/AppShell.vue` lays out the sidebar/navigation, page content, and profile/logout area. It receives the current navigation items and active tab from its parent.
+- `src/components/AppNavItem.vue` renders a single navigation item.
+- `src/components/InitialAvatar.vue` creates a colored initials avatar from a person's display name.
+- `src/components/WeeklyHoursChart.vue` draws weekly hours for employee and manager views.
+- `src/utils/identity.js` shares display-name, initials, and avatar-tone helpers.
+- `src/assets/main.css` contains the global light theme, shared design variables, typography, and base styles. Dashboard-specific layout styling is kept inside its Vue component.
+- `src/components/AuthBrandPanel.vue` is used by sign-in and sign-up screens for the authentication brand area.
 
-This is where the app actually starts.
+## 4. Sign-in, sign-up, and browser session
 
----
+### Sign-in flow
 
-## 3. App shell
-
-### src/App.vue
-
-This is the top-level parent component.
-
-It is responsible for:
-
-- rendering the main widgets
-- storing the current selected user ID
-- passing that user ID into child components
-
-```vue
-<script>
-import User from './components/User.vue'
-import WorkingTimes from './components/WorkingTimes.vue'
-import WorkingTime from './components/WorkingTime.vue'
-import ClockManager from './components/ClockManager.vue'
-import ChartManager from './components/ChartManager.vue'
-
-export default {
-  components: {
-    User,
-    WorkingTimes,
-    WorkingTime,
-    ClockManager,
-    ChartManager
-  },
-
-  data() {
-    return {
-      currentUserId: null
-    }
-  },
-
-  methods: {
-    changeUser(userId) {
-      this.currentUserId = userId
-    }
-  }
-}
-</script>
+```mermaid
+sequenceDiagram
+  participant Person
+  participant SignIn as SignIn.vue
+  participant Axios as src/api.js
+  participant API as Phoenix API
+  Person->>SignIn: Enter username and password
+  SignIn->>Axios: POST /users/sign_in
+  Axios->>API: Public request, no token header
+  API-->>Axios: Token and user role/identity
+  Axios-->>SignIn: Response JSON
+  SignIn->>SignIn: Store token, user ID, role in sessionStorage
+  SignIn->>Person: Navigate to role dashboard
 ```
 
-And it renders the following parts:
+`SignIn.vue` accepts the token/user response and stores the session values. `router.js` uses those values for route selection. The role decides which dashboard the browser opens; API permissions are checked separately by the server.
 
-- `User`
-- `ClockManager`
-- `WorkingTimes`
-- `WorkingTime`
-- `ChartManager`
+### Sign-up flow
 
-This is the main screen assembly point.
+`SignUp.vue` collects full name, username, email, and password, then sends them to `POST /users/sign_up`. The backend creates a regular employee account by default. After success, the page navigates to sign-in.
 
----
+### Logout flow
 
-## 4. Component structure
+Dashboard components call the sign-out endpoint, clear session storage, and navigate to `/login`. The current backend sign-out endpoint acknowledges the request; the browser clearing its token is what ends the local session.
 
-### src/components/User.vue
+## 5. Employee experience: `Home.vue`
 
-This component manages user creation, reading, updating, and deletion.
+The employee screen uses three navigation sections: Home, My Times, and Profile.
 
-It contains:
+### Home dashboard
 
-- a user ID input
-- a username input
-- an email input
-- buttons for get/create/update/delete
+- Greeting and current date based on the browser's local time.
+- Current clock state, elapsed time, and clock in/out button.
+- Break button while clocked in; it starts a break or resumes work.
+- Today's worked time and progress toward an 8-hour target.
+- Weekly-hours chart and recent work/break entries.
 
-It calls the backend using `axios`:
+### My Times
 
-- `GET /api/users/:id`
-- `POST /api/users`
-- `PUT /api/users/:id`
-- `DELETE /api/users/:id`
+Shows the employee's recorded work and break intervals, including type, date, start, end, and duration. A refresh action reloads the dashboard data.
 
-When the user is loaded or created, it emits:
+### Profile
 
-```js
-this.$emit("userChanged", this.userId)
+Shows the signed-in user's name, email, and role, with a separate logout button.
+
+### Employee data flow
+
+```mermaid
+sequenceDiagram
+  participant Home as Home.vue
+  participant API as src/api.js
+  participant Server as Phoenix API
+  Home->>API: GET /users/:id
+  Home->>API: GET /clocks/:id
+  Home->>API: GET /workingtime/:id
+  API->>Server: Attach x-xsrf-token
+  Server-->>API: Profile, current clock, and intervals
+  API-->>Home: JSON responses
+  Home->>Home: Compute today's progress, recent rows, weekly totals
+  Home->>API: POST /clocks/:id with clock or break action
+  API->>Server: Save state transition
+  Server-->>Home: New clock state
+  Home->>API: POST /workingtime/:id when an interval closes
 ```
 
-That tells the parent `App.vue` to update `currentUserId`.
+The page stores its profile, clock state, work-time rows, loading state, and active tab in Vue component state. It periodically updates a local clock value so the displayed elapsed duration can advance without repeatedly writing clock records.
 
----
+## 6. Manager experience: `ManagerDashboard.vue`
 
-### src/components/ClockManager.vue
+The manager screen shows the team assigned to the signed-in manager. It presents a team overview, weekly team hours, and a team-member table with current status, today's hours, weekly hours, and a view action. A separate Profile section shows manager details and logout.
 
-This component manages the current clock state for a selected user.
+Data loading works as follows:
 
-It shows:
-
-- whether the user is clocked in or out
-- the current start time
-- buttons for refresh and clock in/out
-
-It calls the backend:
-
-- `GET /api/clocks/:userId`
-- `POST /api/clocks/:userId`
-- then sometimes `POST /api/workingtime/:userId` when clocking out
-
-This is the special feature of the frontend: it stores a local clock state and uses the backend to toggle it.
-
----
-
-### src/components/WorkingTimes.vue
-
-This component lists all working-time records for a selected user.
-
-It calls:
-
-- `GET /api/workingtime/:userId`
-
-Then it stores the response in:
-
-```js
-workingTimes: []
-```
-
-and displays each item in the UI.
-
----
-
-### src/components/WorkingTime.vue
-
-This component lets the user create or update a working-time entry manually.
-
-It contains:
-
-- working time ID
-- start time input
-- end time input
-- create/update/delete buttons
-
-It calls:
-
-- `POST /api/workingtime/:userId`
-- `PUT /api/workingtime/:id`
-- `DELETE /api/workingtime/:id`
-
----
-
-### src/components/ChartManager.vue
-
-This component loads the working-time data and turns it into charts.
-
-It uses:
-
-- `axios` to fetch the working times
-- `vue-chartjs`
-- `chart.js`
-
-It creates charts for:
-
-- hours worked
-- hours over time
-- work sessions
-
----
-
-## 5. Data flow pattern
-
-The frontend follows one main pattern:
+1. Request the manager profile from `GET /users/:id`.
+2. Request `GET /users`; the backend returns only employees assigned to this manager.
+3. For each returned employee, request their latest clock and work-time rows.
+4. Derive the displayed working/off-clock/on-break status and daily/weekly totals in the frontend.
 
 ```mermaid
 flowchart LR
-  A[Input event] --> B[Component method]
-  B --> C[axios request]
-  C --> D[Backend API]
-  D --> E[response JSON]
-  E --> F[state update]
-  F --> G[Vue re-render]
+  Manager[ManagerDashboard.vue] -->|GET /users| API[Phoenix API]
+  API -->|Assigned employees only| Manager
+  Manager -->|GET /clocks/:employeeId| API
+  Manager -->|GET /workingtime/:employeeId| API
+  API -->|Clock state and intervals| Manager
+  Manager --> Summary[Team status and hour summaries]
 ```
 
-The state is stored in component `data()` and updated via methods.
+The manager dashboard calculates totals from the returned interval data. It does not currently receive a pre-aggregated team report from a dedicated backend endpoint.
 
-Example:
+## 7. Administrator experience: `AdminDashboard.vue`
 
-```js
-data() {
-  return {
-    userId: null,
-    username: "",
-    email: ""
-  }
-}
+The administrator screen has Teams, User management, and Profile sections.
+
+- **Teams:** groups employees under managers using each user's `manager_id`; employees without a manager appear separately.
+- **User management:** loads the user list, supports name/email search and role/status filters, and displays role, account status, joined date, and actions.
+- **Edit role:** opens a drawer with Employee, Manager, and Admin choices; saving sends a role update.
+- **Suspend/activate:** sends a status update. Inactive accounts are denied by backend login and token checks.
+- **Delete:** asks for confirmation and calls the admin delete endpoint. Backend deletion removes that user's clock and working-time rows too.
+- **Profile:** displays admin identity and provides logout.
+
+User records are read from the database through the API; table entries are not static sample users in the component. Formatting such as role labels, initials, and dates is applied in the frontend.
+
+## 8. API client: `src/api.js`
+
+Axios is configured with the backend base URL `http://localhost:4000/api`. A request interceptor:
+
+1. Identifies sign-in/sign-up as public endpoints.
+2. Reads `xsrfToken` from browser session storage for other calls.
+3. Adds it as the `x-xsrf-token` header, if available.
+
+The API host is currently hard-coded to localhost in this file. For a deployed environment, it should be configured for the target backend URL, usually through a Vite environment variable.
+
+Common calls:
+
+| Frontend use | Request |
+| --- | --- |
+| Sign in | `POST /users/sign_in` |
+| Register | `POST /users/sign_up` |
+| Load profile/user list | `GET /users/:id`, `GET /users` |
+| Clock in/out and break | `GET /clocks/:userID`, `POST /clocks/:userID` |
+| Read/create intervals | `GET /workingtime/:userID`, `POST /workingtime/:userID` |
+| Admin role/status changes | `PATCH /users/:id` |
+| Admin delete | `DELETE /users/:id` |
+
+## 9. Responsive design and styling
+
+The app keeps the same content and components across window sizes. Responsive CSS rearranges or compresses navigation, tables, cards, and controls to fit narrower screens; it is not a separate mobile application. The current visual system is light themed, with shared colors, borders, typography, radii, and shadows.
+
+When changing a component, prefer the existing global variables and shared components so employee, manager, and admin views remain visually consistent.
+
+## 10. Project commands
+
+Run from `frontend/project/`:
+
+```sh
+npm run dev
+npm run build
+npm run preview
 ```
 
-Then after a successful API response, the component updates those values.
+- `dev` starts the Vite development server.
+- `build` creates the production bundle in the configured build output directory.
+- `preview` serves a local preview of the built bundle.
 
----
+## 11. Quick file map
 
-## 6. Actual file chain: creating a user from the frontend
+| File | Responsibility |
+| --- | --- |
+| `src/main.js` | Vue entry point |
+| `src/App.vue` | Root router outlet |
+| `src/router.js` | Route definitions and browser-side role redirect |
+| `src/api.js` | Axios setup and auth header |
+| `src/components/SignIn.vue` | Login form/session storage |
+| `src/components/SignUp.vue` | Account registration form |
+| `src/components/Home.vue` | Employee clock, break, time, chart, and profile UI |
+| `src/components/ManagerDashboard.vue` | Manager team view and summaries |
+| `src/components/AdminDashboard.vue` | Team and user administration |
+| `src/components/AppShell.vue` | Shared dashboard layout/navigation |
+| `src/components/WeeklyHoursChart.vue` | Shared weekly chart |
+| `src/assets/main.css` | Global theme and base styles |
 
-This is the real flow for a user creation action.
-
-### Actual file chain with input/output at each stage
-
-1. src/main.js
-   - Input: app boots with `createApp(App).mount('#app')`
-   - Output: Vue app rendered on the page
-
-2. src/App.vue
-   - Input: parent app state with `currentUserId`
-   - Output: renders `User` and passes `currentUserId` into child components
-
-3. src/components/User.vue
-   - Input: user form values (`username`, `email`)
-   - Output: `createUser()` calls `axios.post('/api/users', ...)`
-
-4. axios request
-   - Input: `{ user: { username: 'jordan', email: 'jordan@example.com' } }`
-   - Output: HTTP request to the backend API route `/api/users`
-
-5. backend response
-   - Input: response JSON from backend
-   - Output: `response.data.data.id` is assigned to `this.userId`
-
-6. App.vue parent update
-   - Input: emitted event `userChanged`
-   - Output: `currentUserId` is updated
-
-7. other components re-render
-   - Input: new `userId`
-   - Output: `ClockManager`, `WorkingTimes`, `WorkingTime`, and `ChartManager` now react to the selected user
-
-Example request sent by the frontend:
-
-```js
-axios.post('/api/users', {
-  user: {
-    username: 'jordan',
-    email: 'jordan@example.com'
-  }
-})
-```
-
-Example backend response received by the frontend:
-
-```json
-{
-  "data": {
-    "id": 1,
-    "username": "jordan",
-    "email": "jordan@example.com"
-  }
-}
-```
-
-Example local UI state update after the response:
-
-```js
-this.userId = response.data.data.id
-this.$emit('userChanged', this.userId)
-```
-
----
-
-## 7. Actual file chain: clocking in/out from the frontend
-
-### Actual file chain with input/output at each stage
-
-1. src/App.vue
-   - Input: selected `currentUserId`
-   - Output: passes `userId` to `ClockManager`
-
-2. src/components/ClockManager.vue
-   - Input: button click (`Clock In` or `Clock Out`)
-   - Output: calls `axios.get('/api/clocks/:userId')` or `axios.post('/api/clocks/:userId')`
-
-3. backend clock endpoint
-   - Input: request for a user's latest clock status
-   - Output: returns the current clock state
-
-4. local state update
-   - Input: `response.data.data.status`
-   - Output: updates `clockIn` and `startDateTime`
-
-5. when clocking out
-   - Input: `startDateTime` and current time
-   - Output: POST to `/api/workingtime/:userId` with `{ start, end }`
-
-Example request when clocking out:
-
-```js
-axios.post(`/api/workingtime/${this.userId}`, {
-  workingtime: {
-    start: startTime,
-    end: endTime
-  }
-})
-```
-
-Example backend response after a successful clock-in/out cycle:
-
-```json
-{
-  "data": {
-    "id": 10,
-    "time": "2026-10-03T13:00:00Z",
-    "status": true
-  }
-}
-```
-
----
-
-## 8. Actual file chain: loading working times and charts
-
-### Actual file chain with input/output at each stage
-
-1. src/App.vue
-   - Input: current selected user
-   - Output: passes the selected `userId` to `ChartManager`
-
-2. src/components/ChartManager.vue
-   - Input: user clicks `Load Charts`
-   - Output: calls `axios.get('/api/workingtime/:userId')`
-
-3. backend API
-   - Input: request for time entries for the user
-   - Output: JSON array of work sessions
-
-4. ChartManager.js
-   - Input: `response.data.data`
-   - Output: converts timestamps into `labels` and `hours` arrays
-
-5. chart props update
-   - Input: `barData`, `lineData`, `pieData`
-   - Output: Vue chart components render the chart visuals
-
-Example request:
-
-```js
-axios.get(`/api/workingtime/${this.userId}`)
-```
-
-Example backend response:
-
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "start": "2026-10-03T09:00:00Z",
-      "end": "2026-10-03T17:00:00Z"
-    }
-  ]
-}
-```
-
-Example frontend transformation:
-
-```js
-const hours = workingTimes.map((item) => {
-  const start = new Date(item.start)
-  const end = new Date(item.end)
-  return (end - start) / 3600000
-})
-```
-
----
-
-## 9. The overall pattern in one sentence
-
-The frontend follows this pattern:
-
-- component UI event -> `axios` request -> backend API -> response data -> local state -> Vue re-render
-
-That is the core architecture of this frontend app.
-
----
-
-## 10. Best files to remember
-
-If you only remember a few frontend files, remember these:
-
-- src/main.js
-- src/App.vue
-- src/components/User.vue
-- src/components/ClockManager.vue
-- src/components/WorkingTimes.vue
-- src/components/WorkingTime.vue
-- src/components/ChartManager.vue
-- package.json
-
----
-
-## 11. Final takeaway
-
-This frontend app is a thin UI layer over the backend API.
-
-It does not directly talk to the database.
-
-It does this instead:
-
-- user interaction triggers a component method
-- axios sends the request to the Phoenix backend
-- backend response updates Vue state
-- UI re-renders to show the latest result
-
-That is the main pattern to understand in this frontend project.

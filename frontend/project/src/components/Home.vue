@@ -43,7 +43,7 @@
               </div>
               <div class="progress-content">
                 <div class="progress-ring" :style="{ '--progress': `${todayProgress}%` }"><span>{{ todayProgress }}%</span></div>
-                <div><strong class="metric-time">{{ todayHoursLabel }}</strong><p class="muted-line">of 8h daily target</p></div>
+                <div class="progress-summary"><strong class="metric-time">{{ todayHoursLabel }}</strong><p class="daily-target">of <strong>8h</strong> daily target</p></div>
               </div>
             </article>
           </section>
@@ -385,12 +385,15 @@ export default {
 .clock-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
 .today-card { display: flex; flex-direction: column; justify-content: space-between; }
 .today-card .card-kicker { margin-bottom: 5px; }
-.progress-content { display: flex; align-items: center; gap: 18px; margin: 12px 0 2px; }
-.progress-ring { display: grid; width: 82px; height: 82px; flex: 0 0 82px; place-items: center; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--progress) * 1%), #e6e9ee 0); transform: rotate(-90deg); }
-.progress-ring::before { grid-area: 1 / 1; width: 66px; height: 66px; border-radius: 50%; background: #fff; content: ''; }
-.progress-ring span { z-index: 1; grid-area: 1 / 1; color: #333a44; font-size: 14px; font-weight: 700; transform: rotate(90deg); }
-.metric-time { font-size: 27px; font-weight: 720; letter-spacing: -.7px; }
-.progress-content p { margin: 5px 0 0; }
+.progress-content { display: flex; align-items: center; gap: clamp(18px, 2.5vw, 30px); margin: 12px 0 2px; }
+.progress-ring { --ring-size: clamp(116px, 10.5vw, 140px); display: grid; width: var(--ring-size); height: var(--ring-size); flex: 0 0 var(--ring-size); place-items: center; border-radius: 50%; background: conic-gradient(var(--accent) var(--progress), #e6e9ee 0); transform: rotate(-90deg); }
+.progress-ring::before { grid-area: 1 / 1; width: calc(var(--ring-size) - 28px); height: calc(var(--ring-size) - 28px); border-radius: 50%; background: #fff; content: ''; }
+.progress-ring span { z-index: 1; grid-area: 1 / 1; color: #333a44; font-size: clamp(19px, 1.8vw, 23px); font-weight: 700; transform: rotate(90deg); }
+.metric-time { font-size: clamp(30px, 2.7vw, 36px); font-weight: 720; letter-spacing: -.7px; }
+.progress-summary { display: grid; align-content: center; gap: 6px; }
+.daily-target { margin: 0; color: #647184; font-size: 15px; font-weight: 550; }
+.daily-target strong { color: var(--app-accent-strong); font-size: 16px; font-weight: 700; }
+.progress-content p { margin: 0; }
 .weekly-card, .recent-card { min-height: 260px; padding: 22px 24px; }
 .section-heading { align-items: flex-start; }
 .section-heading h2 { font-size: 16px; }
@@ -511,9 +514,8 @@ export default {
   .entry-name { font-size: 14px; }
   .entry-time { font-size: 13px; }
   .text-action { font-size: 14px; }
-  .progress-ring { width: 88px; height: 88px; flex-basis: 88px; }
-  .progress-ring::before { width: 71px; height: 71px; }
-  .metric-time { font-size: 28px; }
+  .progress-ring { --ring-size: 120px; }
+  .metric-time { font-size: 32px; }
   .times-table-row { grid-template-columns: minmax(0, 1fr) auto; }
   .times-table-row strong { white-space: nowrap; }
 }

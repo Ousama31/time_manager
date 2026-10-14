@@ -20,12 +20,6 @@ config :time_manager, TimeManagerWeb.Endpoint,
   secret_key_base: "V4zpvlMiElb8OkBKx+vKUurNayx0RivPrX4bq1gxF28TUeyY74vats0BtX0xxJmv",
   server: false
 
-# In test we don't send emails
-config :time_manager, TimeManager.Mailer, adapter: Swoosh.Adapters.Test
-
-# Disable swoosh api client as it is only required for production adapters
-config :swoosh, :api_client, false
-
 # Print only warnings and errors during test
 config :logger, level: :warning
 

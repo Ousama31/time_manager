@@ -25,6 +25,7 @@ defmodule TimeManagerWeb.Router do
       post "/users/sign_out", AuthController, :sign_out
 
       get "/users/unassigned", UserController, :unassigned
+      get "/users/:id/manager", UserController, :manager
       resources "/users", UserController, except: [:new, :edit]
 
       get "/workingtime/:userID", WorkingtimeController, :index
@@ -38,7 +39,7 @@ defmodule TimeManagerWeb.Router do
     end
   end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
+  # Enable LiveDashboard in development
   if Application.compile_env(:time_manager, :dev_routes) do
     # If you want to use the LiveDashboard in production, you should put
     # it behind authentication and allow only admins to access it.
@@ -51,7 +52,6 @@ defmodule TimeManagerWeb.Router do
       pipe_through [:fetch_session, :protect_from_forgery]
 
       live_dashboard "/dashboard", metrics: TimeManagerWeb.Telemetry
-      forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
 end

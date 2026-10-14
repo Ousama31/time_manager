@@ -22,15 +22,6 @@ config :time_manager, TimeManagerWeb.Endpoint,
   pubsub_server: TimeManager.PubSub,
   live_view: [signing_salt: "/RFi4Mih"]
 
-# Configure the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
-config :time_manager, TimeManager.Mailer, adapter: Swoosh.Adapters.Local
-
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
@@ -64,7 +55,6 @@ config :phoenix, :json_library, Jason
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
-
 
 # Signing secret key for joken
 config :joken, default_signer: "Attendance_should_not_be_mandatory"

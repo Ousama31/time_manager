@@ -1,6 +1,6 @@
 <template>
   <AppShell :navigation="navigation" :active-tab="activeTab" @navigate="navigateTab" @logout="disconnect">
-    <div class="manager-main">
+  <div class="manager-main">
       <div class="manager-content">
         <section v-if="activeTab === 'statistics'" id="dashboard" class="dashboard-section">
           <div class="page-heading"><div><p class="eyebrow">TEAM OVERVIEW</p><h1>Statistics</h1><p class="page-subtitle">Attendance and working times for your team.</p></div></div>
@@ -71,6 +71,17 @@
           </template>
           <p v-else class="membership-loading">Statistics are available after this employee joins your team.</p>
           <p v-if="membershipError" class="membership-error" role="alert">{{ membershipError }}</p>
+          <form v-if="selectedMember.role === 'Employee' && selectedMember.managerId" class="message-compose" @submit.prevent="sendMemberMessage">
+            <h3>Send an email</h3>
+            <p>To {{ selectedMember.email }}. Your email app chooses the sender account.</p>
+            <label :for="`manager-message-subject-${selectedMember.id}`">Subject <span>Optional</span></label>
+            <input :id="`manager-message-subject-${selectedMember.id}`" v-model.trim="messageSubject" type="text" maxlength="160" placeholder="A short subject" />
+            <label :for="`manager-message-body-${selectedMember.id}`">Message</label>
+            <textarea :id="`manager-message-body-${selectedMember.id}`" v-model="messageBody" required maxlength="5000" rows="4" placeholder="Write your message…"></textarea>
+            <p v-if="messageError" class="message-error" role="alert">{{ messageError }}</p>
+            <p v-if="messageSuccess" class="message-success" role="status">{{ messageSuccess }}</p>
+            <button class="team-action message-submit" type="submit" :disabled="!messageBody.trim()">Open email draft</button>
+          </form>
           <button v-if="selectedMember.role === 'Employee'" type="button" class="team-action drawer-team-action" :class="{ 'team-remove': selectedMember.managerId }" :disabled="teamActionBusy || selectedMemberLoading" @click="toggleSelectedMembership">{{ teamActionBusy ? 'Saving...' : selectedMember.managerId ? 'Remove from my team' : 'Add to my team' }}</button>
         </section>
       </div>
@@ -84,6 +95,7 @@ import { getAvatarTone, getDisplayName, getInitials } from '../utils/identity'
 import InitialAvatar from './InitialAvatar.vue'
 import AppShell from './AppShell.vue'
 import WeeklyHoursChart from './WeeklyHoursChart.vue'
+import { createEmailDraftUrl } from '../utils/emailDraft'
 
 function startOfLocalDay(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
@@ -132,6 +144,10 @@ export default {
       selectedMember: null,
       selectedMemberLoading: false,
       membershipError: '',
+      messageSubject: '',
+      messageBody: '',
+      messageError: '',
+      messageSuccess: '',
       statsRequestId: 0,
       now: new Date()
     }
@@ -336,6 +352,10 @@ export default {
       this.selectedMember = member
       this.selectedMemberLoading = false
       this.membershipError = ''
+      this.messageSubject = ''
+      this.messageBody = ''
+      this.messageError = ''
+      this.messageSuccess = ''
       if (Array.isArray(member.records)) return
 
       this.selectedMemberLoading = true
@@ -359,7 +379,20 @@ export default {
       this.selectedMember = null
       this.selectedMemberLoading = false
       this.membershipError = ''
+      this.messageError = ''
+      this.messageSuccess = ''
       this.statsRequestId += 1
+    },
+    sendMemberMessage() {
+      if (!this.selectedMember || !this.messageBody.trim()) return
+      this.messageError = ''
+      this.messageSuccess = ''
+      try {
+        window.location.href = createEmailDraftUrl(this.selectedMember.email, this.messageSubject, this.messageBody)
+        this.messageSuccess = 'Your email draft should open in your email app. Send it there to deliver your message.'
+      } catch (error) {
+        this.messageError = 'Could not open an email draft. Please check the recipient address and your email app.'
+      }
     },
     async toggleSelectedMembership() {
       if (!this.selectedMember || this.teamActionBusy) return
@@ -473,6 +506,17 @@ export default {
 .drawer-team-action { width: 100%; min-height: 42px; margin-top: 16px; font-size: 13px; }
 .membership-error { margin: 14px 0 0; color: #a33636; font-size: 12px; }
 .membership-loading { margin: 12px 0 0; color: var(--app-muted); font-size: 12px; }
+.message-compose { display: grid; gap: 8px; margin-top: 17px; padding-top: 16px; border-top: 1px solid var(--app-border); }
+.message-compose h3 { margin: 0; color: var(--app-text); font-size: 14px; }
+.message-compose p { margin: 0; color: var(--app-muted); font-size: 11px; line-height: 1.5; }
+.message-compose label { margin-top: 3px; color: #414c5d; font-size: 11px; font-weight: 650; }
+.message-compose label span { color: var(--app-muted); font-weight: 400; }
+.message-compose input, .message-compose textarea { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--app-border); border-radius: 7px; color: var(--app-text); background: #fff; font: inherit; font-size: 12px; }
+.message-compose textarea { min-height: 96px; resize: vertical; }
+.message-compose input:focus, .message-compose textarea:focus { border-color: var(--app-accent); outline: 3px solid rgb(22 132 248 / 12%); }
+.message-compose .message-error, .message-compose .message-success { font-size: 11px; }
+.message-compose .message-error { color: #a33636; }.message-compose .message-success { color: #16734f; }
+.message-submit { justify-self: start; margin-top: 3px; }
 .team-search { display: flex; width: min(225px, 45%); min-height: 31px; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #e5e8ed; border-radius: 6px; background: #fff; }
 .team-search:focus-within { border-color: #82b8f3; box-shadow: 0 0 0 3px rgb(22 131 248 / 9%); }
 .team-search svg { width: 13px; fill: none; stroke: #929baa; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }

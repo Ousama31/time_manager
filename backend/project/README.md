@@ -9,6 +9,10 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
 
+## Email drafts
+
+The feedback and user-message forms open a prefilled draft in the device's default email application. The user reviews and sends it there. The operating system or email application chooses the sender account; the app cannot force the sender address or guarantee that a mail application is configured.
+
 ## Learn more
 
 * Official website: https://www.phoenixframework.org/

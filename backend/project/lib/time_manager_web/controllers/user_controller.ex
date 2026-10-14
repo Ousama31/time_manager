@@ -36,6 +36,26 @@ defmodule TimeManagerWeb.UserController do
     end
   end
 
+  def manager(conn, %{"id" => id}) do
+    current_user = conn.assigns.current_user
+
+    if current_user.role == :employee and to_string(current_user.id) == id do
+      manager = if current_user.manager_id, do: Accounts.get_user(current_user.manager_id)
+
+      case manager do
+        %User{role: :manager} = manager ->
+          json(conn, %{
+            data: %{id: manager.id, full_name: manager.full_name, email: manager.email}
+          })
+
+        _ ->
+          conn |> put_status(:not_found) |> json(%{error: "No assigned manager found"})
+      end
+    else
+      conn |> put_status(:forbidden) |> json(%{error: "You can only view your assigned manager"})
+    end
+  end
+
   def sign_up(conn, params) do
     user_params = Map.get(params, "user", params)
 

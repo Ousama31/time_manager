@@ -78,6 +78,24 @@
           </article>
         </template>
 
+        <template v-else-if="activeTab === 'feedback'">
+          <div class="page-heading"><div><p class="eyebrow">TEAM COMMUNICATION</p><h1>Feedback</h1><p class="date-line">Send a private message to your assigned manager.</p></div></div>
+          <article class="card feedback-panel">
+            <div class="feedback-recipient"><span class="feedback-recipient-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6.5h16v11H4z"/><path d="m4.5 7 7.5 6 7.5-6"/></svg></span><span><strong>To your manager</strong><small>Your manager is selected from your account assignment.</small></span></div>
+            <p v-if="!profile.manager_id" class="feedback-unassigned" role="status">No manager is assigned to your account yet. Contact an administrator to join a team.</p>
+            <form v-else class="feedback-form" @submit.prevent="sendFeedback">
+              <label for="feedback-subject">Subject <span>Optional</span></label>
+              <input id="feedback-subject" v-model.trim="feedbackSubject" type="text" maxlength="160" placeholder="A short subject" />
+              <label for="feedback-message">Message</label>
+              <textarea id="feedback-message" v-model="feedbackBody" required maxlength="5000" rows="7" placeholder="Write your message…"></textarea>
+              <p class="sender-note">Your email app chooses the sender account. Review it and send the draft there.</p>
+              <p v-if="feedbackError" class="feedback-error" role="alert">{{ feedbackError }}</p>
+              <p v-if="feedbackSuccess" class="feedback-success" role="status">{{ feedbackSuccess }}</p>
+              <button class="feedback-submit" type="submit" :disabled="feedbackBusy || !feedbackBody.trim()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-7.5 18-3.7-7.8L2 9.5 21 3Z"/><path d="M9.8 13.2 21 3"/></svg>{{ feedbackBusy ? 'Opening…' : 'Open email draft' }}</button>
+            </form>
+          </article>
+        </template>
+
         <template v-else>
           <div class="page-heading"><div><p class="eyebrow">Account details</p><h1>Profile</h1><p class="date-line">Your Time Manager account information.</p></div></div>
           <article class="card profile-card"><InitialAvatar variant="profile-avatar" :initials="initials" /><div><h2>{{ displayName }}</h2><p>{{ profile.email || 'Email not available' }}</p><span class="profile-role">Employee</span></div></article>
@@ -94,8 +112,12 @@ import { getDisplayName, getInitials } from '../utils/identity'
 import InitialAvatar from './InitialAvatar.vue'
 import AppShell from './AppShell.vue'
 import WeeklyHoursChart from './WeeklyHoursChart.vue'
+<<<<<<< Updated upstream
 import offlineSync from '../offlineSync'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
+=======
+import { createEmailDraftUrl } from '../utils/emailDraft'
+>>>>>>> Stashed changes
 
 const configuredAutoClockOutSeconds = Number(import.meta.env.VITE_AUTO_CLOCK_OUT_SECONDS)
 const AUTO_CLOCK_OUT_SECONDS = configuredAutoClockOutSeconds > 0 ? configuredAutoClockOutSeconds : 8 * 60 * 60 // 8 hours
@@ -115,6 +137,11 @@ export default {
       clockBusy: false,
       loading: false,
       activeTab: 'home',
+      feedbackSubject: '',
+      feedbackBody: '',
+      feedbackBusy: false,
+      feedbackError: '',
+      feedbackSuccess: '',
       errorMessage: '',
       successMessage: '',
       tick: null,
@@ -126,6 +153,7 @@ export default {
       return [
         { key: 'home', label: 'Home', icon: 'home' },
         { key: 'times', label: 'My Times', icon: 'times' },
+        { key: 'feedback', label: 'Feedback', icon: 'message' },
         { key: 'profile', label: 'Profile', icon: 'profile' }
       ]
     },
@@ -236,6 +264,21 @@ export default {
     if (this.unsubscribeSync) this.unsubscribeSync()
   },
   methods: {
+    async sendFeedback() {
+      if (this.feedbackBusy || !this.feedbackBody.trim()) return
+      this.feedbackBusy = true
+      this.feedbackError = ''
+      this.feedbackSuccess = ''
+      try {
+        const response = await api.get(`/users/${this.userId}/manager`)
+        window.location.href = createEmailDraftUrl(response.data.data.email, this.feedbackSubject, this.feedbackBody)
+        this.feedbackSuccess = 'Your email draft should open in your email app. Send it there to deliver your message.'
+      } catch (error) {
+        this.feedbackError = error.response?.data?.error || 'Could not open an email draft. Please check your email app and try again.'
+      } finally {
+        this.feedbackBusy = false
+      }
+    },
     async loadProfile() {
       if (!this.userId) return
       const cached = offlineSync.getLocalCache(`profile_${this.userId}`)
@@ -601,6 +644,26 @@ export default {
 .profile-card h2 { margin: 0 0 6px; font-size: 18px; }
 .profile-role { display: inline-block; margin-top: 10px; padding: 5px 9px; border-radius: 999px; color: var(--app-accent-strong); background: var(--app-accent-soft); font-size: 11px; font-weight: 650; }
 .profile-logout { min-height: 44px; margin-top: 16px; padding: 0 17px; border: 1px solid #e1e4e9; border-radius: 11px; color: #48515c; background: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.feedback-panel { max-width: 760px; padding: 24px; }
+.feedback-recipient { display: flex; align-items: center; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid var(--app-border); }
+.feedback-recipient-icon { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border-radius: 10px; color: #1674bf; background: #eaf5f6; }
+.feedback-recipient-icon svg { width: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.feedback-recipient > span:last-child { display: grid; gap: 4px; }
+.feedback-recipient strong { font-size: 14px; }
+.feedback-recipient small, .sender-note { color: var(--app-muted); font-size: 12px; }
+.feedback-form { display: grid; gap: 9px; margin-top: 20px; }
+.feedback-form label { margin-top: 5px; color: #414c5d; font-size: 13px; font-weight: 650; }
+.feedback-form label span { margin-left: 5px; color: var(--app-muted); font-size: 11px; font-weight: 400; }
+.feedback-form input, .feedback-form textarea { width: 100%; min-width: 0; padding: 11px 12px; border: 1px solid var(--app-border); border-radius: 8px; color: var(--app-text); background: #fff; font: inherit; font-size: 14px; }
+.feedback-form textarea { min-height: 156px; resize: vertical; }
+.feedback-form input:focus, .feedback-form textarea:focus { border-color: var(--app-accent); outline: 3px solid rgb(22 132 248 / 12%); }
+.sender-note { margin: 2px 0 0; line-height: 1.5; }
+.feedback-error, .feedback-success { margin: 0; font-size: 13px; }
+.feedback-error { color: #a83232; }.feedback-success { color: #16734f; }
+.feedback-unassigned { margin: 18px 0 0; color: #80591a; font-size: 13px; line-height: 1.5; }
+.feedback-submit { display: inline-flex; min-height: 43px; align-items: center; justify-content: center; gap: 8px; justify-self: start; margin-top: 4px; padding: 0 16px; border: 0; border-radius: 8px; color: #fff; background: #1679a3; font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.feedback-submit:disabled { opacity: .55; cursor: not-allowed; }
+.feedback-submit svg { width: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
 .bottom-navigation { display: none; }
 
 @media (max-width: 999px) {
@@ -615,6 +678,7 @@ export default {
   .topbar-user-copy small { font-size: 11px; }
   .logout-button { display: grid; }
   .page-content { padding: 24px 18px 30px; }
+  .feedback-panel { padding: 19px; }
   .page-heading { align-items: center; margin-bottom: 20px; }
   .page-heading h1 { font-size: 27px; }
   .eyebrow { font-size: 11px; }

@@ -2,7 +2,9 @@ defmodule TimeManagerWeb.UserControllerTest do
   use TimeManagerWeb.ConnCase
 
   import TimeManager.AccountsFixtures
+  alias TimeManager.Accounts
   alias TimeManager.Accounts.User
+  alias TimeManager.Repo
 
   @create_attrs %{
     username: "some username",
@@ -22,6 +24,61 @@ defmodule TimeManagerWeb.UserControllerTest do
     test "lists all users", %{conn: conn} do
       conn = get(conn, ~p"/api/users")
       assert json_response(conn, 200)["data"] == []
+    end
+  end
+
+  describe "manager contact" do
+    test "an employee can retrieve their assigned manager's contact", %{conn: conn} do
+      employee =
+        user_fixture(%{
+          email: "employee@example.com",
+          username: "employee",
+          full_name: "Employee",
+          password: "secure-password"
+        })
+
+      manager =
+        user_fixture(%{
+          email: "manager@example.com",
+          username: "manager",
+          full_name: "Manager",
+          password: "secure-password"
+        })
+
+      manager = Repo.update!(Ecto.Changeset.change(manager, role: :manager))
+      {:ok, employee} = Accounts.update_user_manager(employee, manager.id)
+
+      conn =
+        conn
+        |> authenticated_as(employee)
+        |> get(~p"/api/users/#{employee.id}/manager")
+
+      assert json_response(conn, 200)["data"]["email"] == manager.email
+    end
+
+    test "an employee cannot retrieve another employee's manager", %{conn: conn} do
+      employee =
+        user_fixture(%{
+          email: "employee@example.com",
+          username: "employee",
+          full_name: "Employee",
+          password: "secure-password"
+        })
+
+      other_employee =
+        user_fixture(%{
+          email: "other@example.com",
+          username: "other",
+          full_name: "Other Employee",
+          password: "secure-password"
+        })
+
+      conn =
+        conn
+        |> authenticated_as(employee)
+        |> get(~p"/api/users/#{other_employee.id}/manager")
+
+      assert json_response(conn, 403)["error"] =~ "assigned manager"
     end
   end
 
@@ -84,5 +141,10 @@ defmodule TimeManagerWeb.UserControllerTest do
     user = user_fixture()
 
     %{user: user}
+  end
+
+  defp authenticated_as(conn, %User{id: user_id}) do
+    token = Phoenix.Token.sign(TimeManagerWeb.Endpoint, "user_auth", user_id)
+    put_req_header(conn, "x-xsrf-token", token)
   end
 end

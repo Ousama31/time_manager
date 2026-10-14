@@ -94,6 +94,8 @@ import { getDisplayName, getInitials } from '../utils/identity'
 import InitialAvatar from './InitialAvatar.vue'
 import AppShell from './AppShell.vue'
 import WeeklyHoursChart from './WeeklyHoursChart.vue'
+import offlineSync from '../offlineSync'
+import { Haptics, ImpactStyle } from '@capacitor/haptics'
 
 const configuredAutoClockOutSeconds = Number(import.meta.env.VITE_AUTO_CLOCK_OUT_SECONDS)
 const AUTO_CLOCK_OUT_SECONDS = configuredAutoClockOutSeconds > 0 ? configuredAutoClockOutSeconds : 8 * 60 * 60 // 8 hours
@@ -115,7 +117,8 @@ export default {
       activeTab: 'home',
       errorMessage: '',
       successMessage: '',
-      tick: null
+      tick: null,
+      unsubscribeSync: null
     }
   },
   computed: {
@@ -219,24 +222,56 @@ export default {
         this.toggleClock()
       }
     }, 1000)
+
+    let wasSyncing = false
+    this.unsubscribeSync = offlineSync.subscribe(({ isOnline, isSyncing, queueCount }) => {
+      if (wasSyncing && !isSyncing && queueCount === 0) {
+        this.loadDashboard()
+      }
+      wasSyncing = isSyncing
+    })
   },
   beforeUnmount() {
     if (this.tick) window.clearInterval(this.tick)
+    if (this.unsubscribeSync) this.unsubscribeSync()
   },
   methods: {
     async loadProfile() {
       if (!this.userId) return
-      try {
-        const response = await api.get(`/users/${this.userId}`)
-        this.profile = response.data.data || {}
-      } catch (error) {
-        console.error('Could not load profile:', error)
+      const cached = offlineSync.getLocalCache(`profile_${this.userId}`)
+      if (cached) {
+        this.profile = cached
+      }
+      if (offlineSync.isOnline) {
+        try {
+          const response = await api.get(`/users/${this.userId}`)
+          this.profile = response.data.data || {}
+          offlineSync.saveLocalCache(`profile_${this.userId}`, this.profile)
+        } catch (error) {
+          console.error('Could not load profile:', error)
+        }
       }
     },
     async loadDashboard() {
       if (!this.userId) return
       this.loading = true
       this.errorMessage = ''
+
+      const cachedClock = offlineSync.getLocalCache(`clock_${this.userId}`)
+      const cachedTimes = offlineSync.getLocalCache(`workingtimes_${this.userId}`)
+      if (cachedClock) {
+        this.clockState = cachedClock.state || (cachedClock.status ? 'working' : 'off')
+        this.clockStart = this.clockState !== 'off' ? cachedClock.time : null
+      }
+      if (cachedTimes && Array.isArray(cachedTimes)) {
+        this.workingTimes = cachedTimes
+      }
+
+      if (!offlineSync.isOnline) {
+        this.loading = false
+        return
+      }
+
       try {
         const [clockResponse, timesResponse] = await Promise.all([
           api.get(`/clocks/${this.userId}`),
@@ -254,9 +289,13 @@ export default {
           sessionStorage.setItem(sessionStartKey, this.clockSessionStart)
         }
         this.workingTimes = timesResponse.data.data || []
+        offlineSync.saveLocalCache(`clock_${this.userId}`, clock)
+        offlineSync.saveLocalCache(`workingtimes_${this.userId}`, this.workingTimes)
       } catch (error) {
         console.error('Could not load time data:', error)
-        this.errorMessage = 'We could not load your time data. Please try again.'
+        if (!cachedClock && !cachedTimes) {
+          this.errorMessage = 'We could not load your time data. Please try again.'
+        }
       } finally {
         this.loading = false
       }
@@ -266,8 +305,57 @@ export default {
       this.clockBusy = true
       this.errorMessage = ''
       this.successMessage = ''
+
+      try {
+        Haptics.impact({ style: ImpactStyle.Medium })
+      } catch {}
+
       const previousState = this.clockState
       const previousStart = this.clockState !== 'off' ? this.clockStart : null
+      const nowIso = new Date().toISOString()
+
+      if (!offlineSync.isOnline) {
+        const sessionStartKey = `clockSessionStart:${this.userId}`
+        if (previousState === 'off') {
+          this.clockState = 'working'
+          this.clockStart = nowIso
+          this.clockSessionStart = nowIso
+          sessionStorage.setItem(sessionStartKey, nowIso)
+          offlineSync.saveLocalCache(`clock_${this.userId}`, { state: 'working', status: true, time: nowIso })
+          offlineSync.enqueue({
+            method: 'POST',
+            url: `/clocks/${this.userId}`,
+            data: { action: 'clock' }
+          })
+          this.successMessage = 'You are clocked in (offline mode, will sync when connected).'
+        } else {
+          this.clockState = 'off'
+          this.clockStart = null
+          this.clockSessionStart = null
+          sessionStorage.removeItem(sessionStartKey)
+          offlineSync.saveLocalCache(`clock_${this.userId}`, { state: 'off', status: false, time: null })
+          offlineSync.enqueue({
+            method: 'POST',
+            url: `/clocks/${this.userId}`,
+            data: { action: 'clock' }
+          })
+          if (previousStart) {
+            const kind = previousState === 'break' ? 'break' : 'work'
+            const newEntry = { id: `offline_${Date.now()}`, start: previousStart, end: nowIso, kind }
+            this.workingTimes = [newEntry, ...this.workingTimes]
+            offlineSync.saveLocalCache(`workingtimes_${this.userId}`, this.workingTimes)
+            offlineSync.enqueue({
+              method: 'POST',
+              url: `/workingtime/${this.userId}`,
+              data: { workingtime: { start: previousStart, end: nowIso, kind } }
+            })
+          }
+          this.successMessage = 'Your work session has been saved (offline mode, will sync when connected).'
+        }
+        this.clockBusy = false
+        return
+      }
+
       try {
         const response = await api.post(`/clocks/${this.userId}`, { action: 'clock' })
         const clock = response.data.data
@@ -281,6 +369,7 @@ export default {
           this.clockSessionStart = clock.time
           sessionStorage.setItem(sessionStartKey, clock.time)
         }
+        offlineSync.saveLocalCache(`clock_${this.userId}`, clock)
         if (previousStart && this.clockState === 'off' && clock?.time) {
           await api.post(`/workingtime/${this.userId}`, { workingtime: { start: previousStart, end: clock.time, kind: previousState === 'break' ? 'break' : 'work' } })
           await this.loadDashboard()
@@ -288,6 +377,11 @@ export default {
         this.successMessage = this.clockState === 'working' ? 'You are clocked in. Have a focused day!' : 'Your work session has been saved.'
       } catch (error) {
         console.error('Could not update clock:', error)
+        if (!error.response) {
+          offlineSync.isOnline = false
+          this.clockBusy = false
+          return this.toggleClock()
+        }
         this.errorMessage = 'We could not update your clock. Please try again.'
         this.loadDashboard()
       } finally {
@@ -299,13 +393,52 @@ export default {
       this.clockBusy = true
       this.errorMessage = ''
       this.successMessage = ''
+
+      try {
+        Haptics.impact({ style: ImpactStyle.Light })
+      } catch {}
+
       const previousState = this.clockState
       const previousStart = this.clockStart
+      const nowIso = new Date().toISOString()
+
+      if (!offlineSync.isOnline) {
+        const nextState = previousState === 'break' ? 'working' : 'break'
+        this.clockState = nextState
+        this.clockStart = nowIso
+        offlineSync.saveLocalCache(`clock_${this.userId}`, { state: nextState, status: true, time: nowIso })
+        offlineSync.enqueue({
+          method: 'POST',
+          url: `/clocks/${this.userId}`,
+          data: { action: 'break' }
+        })
+
+        if (previousStart) {
+          const kind = previousState === 'working' ? 'work' : 'break'
+          const newEntry = { id: `offline_${Date.now()}`, start: previousStart, end: nowIso, kind }
+          this.workingTimes = [newEntry, ...this.workingTimes]
+          offlineSync.saveLocalCache(`workingtimes_${this.userId}`, this.workingTimes)
+          offlineSync.enqueue({
+            method: 'POST',
+            url: `/workingtime/${this.userId}`,
+            data: { workingtime: { start: previousStart, end: nowIso, kind } }
+          })
+        }
+
+        this.successMessage = nextState === 'break'
+          ? 'Break started (offline mode, will sync when connected).'
+          : 'Break ended. Your work session resumed (offline mode, will sync).'
+        this.clockBusy = false
+        return
+      }
+
       try {
         const response = await api.post(`/clocks/${this.userId}`, { action: 'break' })
         const clock = response.data.data
         this.clockState = clock?.state || (clock?.status ? 'working' : 'off')
         this.clockStart = this.clockState !== 'off' ? clock.time : null
+        offlineSync.saveLocalCache(`clock_${this.userId}`, clock)
+
         if (previousStart && clock?.time) {
           const kind = previousState === 'working' ? 'work' : 'break'
           await api.post(`/workingtime/${this.userId}`, { workingtime: { start: previousStart, end: clock.time, kind } })
@@ -314,6 +447,11 @@ export default {
         this.successMessage = this.clockState === 'break' ? 'Break started. Take a moment to recharge.' : 'Break ended. Your work session has resumed.'
       } catch (error) {
         console.error('Could not update break:', error)
+        if (!error.response) {
+          offlineSync.isOnline = false
+          this.clockBusy = false
+          return this.toggleBreak()
+        }
         this.errorMessage = 'We could not update your break. Please try again.'
         this.loadDashboard()
       } finally {

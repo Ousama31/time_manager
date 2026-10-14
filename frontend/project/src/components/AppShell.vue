@@ -60,7 +60,7 @@ export default {
 .page-content { width: min(100%, 1500px); margin: 0 auto; padding: 36px clamp(28px, 4vw, 64px) 52px; }
 .bottom-navigation { display: none; }
 @media (max-width: 999px) {
-  .workspace-shell { display: block; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .workspace-shell { display: block; padding-top: env(safe-area-inset-top); padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   .sidebar { display: none; }
   .main-column { width: 100%; min-height: 100vh; margin: 0; }
   .page-content { padding: 24px 18px 30px; }

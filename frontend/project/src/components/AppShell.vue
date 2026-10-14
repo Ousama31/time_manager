@@ -60,15 +60,41 @@ export default {
 .page-content { width: min(100%, 1500px); margin: 0 auto; padding: 36px clamp(28px, 4vw, 64px) 52px; }
 .bottom-navigation { display: none; }
 @media (max-width: 999px) {
-  .workspace-shell { display: block; padding-top: env(safe-area-inset-top); padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .workspace-shell {
+    display: block;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
   .sidebar { display: none; }
   .main-column { width: 100%; min-height: 100vh; margin: 0; }
-  .page-content { padding: 24px 18px 30px; }
-  .bottom-navigation { position: fixed; right: 0; bottom: 0; left: 0; z-index: 5; display: grid; grid-template-columns: repeat(var(--item-count), minmax(0, 1fr)); padding: 8px 7px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--app-border); background: rgb(255 255 255 / 97%); box-shadow: 0 -5px 20px rgb(31 41 55 / 4%); backdrop-filter: blur(18px); }
+  .page-content { padding: 20px 18px 30px; }
+  .bottom-navigation {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: repeat(var(--item-count), minmax(0, 1fr));
+    padding: 8px max(7px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+    border-top: 1px solid var(--app-border);
+    background: rgb(255 255 255 / 97%);
+    box-shadow: 0 -5px 20px rgb(31 41 55 / 4%);
+    backdrop-filter: blur(18px);
+  }
   .bottom-nav-item { display: grid; min-height: 52px; justify-items: center; align-content: center; gap: 4px; border: 0; border-radius: 10px; color: #89919c; background: transparent; font: inherit; font-size: 10px; cursor: pointer; }
   .bottom-nav-item.active { color: var(--app-accent-strong); background: var(--app-accent-soft); }
 }
-@media (max-width: 560px) { .page-content { padding-right: 13px; padding-left: 13px; } }
+@media (max-width: 560px) {
+  .page-content {
+    padding-top: 16px;
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-bottom: 24px;
+  }
+}
 
 /* Accessible sizing shared by manager and administrator workspaces. */
 .sidebar { width: 264px; padding: 27px 18px; }

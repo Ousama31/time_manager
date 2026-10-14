@@ -99,6 +99,9 @@ export default {
           sessionStorage.setItem('xsrfToken', token);
           sessionStorage.setItem('userId', userId);
           sessionStorage.setItem('role', role);
+          localStorage.setItem('xsrfToken', token);
+          localStorage.setItem('userId', userId);
+          localStorage.setItem('role', role);
           this.$router.push('/');
         } else {
           this.error = 'Token missing in response';
@@ -127,6 +130,9 @@ export default {
   background: var(--app-background);
   color: var(--app-text);
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .login-content {

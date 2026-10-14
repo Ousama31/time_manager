@@ -763,17 +763,39 @@ export default {
   .table-scroll { overflow: visible; padding: 0 10px 10px; }
   .users-table { display: block; width: 100%; min-width: 0; white-space: normal; }
   .users-table thead { display: none; }
-  .users-table tbody { display: grid; gap: 10px; }
-  .users-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 13px; border: 1px solid var(--app-border); border-radius: 11px; background: var(--app-surface); }
+  .users-table tbody { display: grid; gap: 8px; }
+  .users-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 3px;
+    column-gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--app-border);
+    border-radius: 11px;
+    background: var(--app-surface);
+    box-shadow: 0 1px 4px rgb(27 41 61 / 3%);
+  }
   .users-table tbody tr:hover { background: var(--app-surface); }
-  .users-table td { display: block; height: auto; min-width: 0; padding: 0 !important; border: 0; font-size: 11px; }
-  .users-table td:first-child { grid-column: 1 / -1; padding: 0 !important; }
-  .users-table td:nth-child(2), .users-table td:nth-child(3) { display: grid; justify-items: start; gap: 5px; }
-  .users-table td:nth-child(2)::before, .users-table td:nth-child(3)::before, .users-table .joined-cell::before { color: var(--app-muted); content: attr(data-label); font-size: 9px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
-  .users-table .joined-cell { display: grid; justify-items: start; gap: 5px; }
-  .users-table .action-cell { grid-column: 1 / -1; padding: 4px 0 0 !important; }
-  .action-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .manage-button, .user-action-button { min-width: 0; padding: 0 5px; font-size: 10px; }
+  .users-table td {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    font-size: 11px;
+  }
+  .users-table td:first-child { grid-column: 1; grid-row: 1; min-width: 0; align-self: center; }
+  .users-table td:nth-child(3) { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
+  .users-table td:nth-child(3)::before { display: none; }
+  .users-table .joined-cell { grid-column: 1; grid-row: 2; font-size: 11px; color: var(--app-muted); line-height: 1.2; margin: 2px 0 0 !important; }
+  .users-table .joined-cell::before { content: 'Joined '; color: var(--app-muted); font-size: 11px; }
+  .users-table td:nth-child(2) { grid-column: 1; grid-row: 3; justify-self: start; align-self: center; margin: 2px 0 0 !important; }
+  .users-table td:nth-child(2)::before { display: none; }
+  .users-table td:nth-child(2) .role-badge { min-height: 22px; padding: 0 7px; font-size: 10px; }
+  .users-table .action-cell { grid-column: 2; grid-row: 2 / span 2; justify-self: end; align-self: center; padding: 0 !important; }
+  .action-buttons { display: flex; align-items: center; gap: 5px; }
+  .manage-button, .user-action-button { min-width: 0; min-height: 28px !important; padding: 0 8px !important; border-radius: 6px; font-size: 11px; }
   .users-table tbody tr:has(.empty-row) { display: block; }
   .users-table .empty-row { display: block; padding: 22px 8px !important; }
 }
@@ -858,12 +880,10 @@ export default {
   .stat-icon { width: 32px; height: 32px; }
   .stat-card > strong { font-size: 23px; }
   .stat-label { font-size: 11px; }
-  .team-card, .unassigned-card { padding: 16px; }
-  .users-table tbody tr { gap: 10px 13px; padding: 15px; border-radius: 17px; box-shadow: 0 4px 13px rgb(27 41 61 / 4%); }
-  .users-table td { font-size: 12px; }
-  .users-table td:nth-child(2)::before, .users-table td:nth-child(3)::before, .users-table .joined-cell::before { font-size: 10px; }
-  .action-buttons { gap: 8px; }
-  .manage-button, .user-action-button { min-height: 38px; font-size: 11px; }
+  .users-table tbody tr { gap: 6px 10px; padding: 10px 14px; border-radius: 10px; box-shadow: 0 2px 8px rgb(27 41 61 / 3%); }
+  .users-table td { font-size: 11px; }
+  .action-buttons { gap: 5px; }
+  .manage-button, .user-action-button { min-height: 28px; font-size: 10.5px; }
   .teams-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
@@ -901,14 +921,16 @@ export default {
 .search-box, .filter-select, .filter-role { min-height: 46px; gap: 10px; padding-inline: 12px; }
 .search-box input, .filter-select select, .filter-role { font-size: 14px; }
 .search-box svg, .filter-select > svg:first-child, .filter-role > svg:first-child { width: 18px; flex-basis: 18px; }
-.users-table th { height: 48px; font-size: 12px; }
-.users-table td { height: 74px; font-size: 14px; }
+@media (min-width: 1000px) {
+  .users-table th { height: 48px; font-size: 12px; }
+  .users-table td { height: 74px; font-size: 14px; }
+  .manage-button, .user-action-button { min-height: 40px; padding-inline: 12px; font-size: 12px; }
+}
 .user-avatar { width: 42px; height: 42px; flex-basis: 42px; font-size: 12px; }
 .user-identity strong { font-size: 14px; }
 .user-identity small { font-size: 12px; }
-.role-badge { min-height: 29px; font-size: 12px; }
+.role-badge { min-height: 25px; font-size: 11px; }
 .status-badge { font-size: 12px; }
-.manage-button, .user-action-button { min-height: 40px; padding-inline: 12px; font-size: 12px; }
 .drawer-header { padding: 26px 28px 21px; }
 .drawer-body { padding: 24px 28px; }
 .drawer-footer { padding: 17px 28px; }
@@ -930,10 +952,6 @@ export default {
   .team-card, .unassigned-card { padding: 19px; }
   .panel-heading { padding: 17px 15px 9px; }
   .table-toolbar { padding: 9px 15px 16px; }
-  .users-table tbody tr { gap: 12px 14px; padding: 17px; }
-  .users-table td { font-size: 13px; }
-  .users-table td:nth-child(2)::before, .users-table td:nth-child(3)::before, .users-table .joined-cell::before { font-size: 11px; }
-  .manage-button, .user-action-button { min-height: 42px; font-size: 12px; }
 }
 
 @media (max-width: 480px) {

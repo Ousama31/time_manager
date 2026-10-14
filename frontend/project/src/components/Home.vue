@@ -127,7 +127,7 @@ export default {
   components: { AppShell, InitialAvatar, WeeklyHoursChart },
   data() {
     return {
-      userId: sessionStorage.getItem('userId'),
+      userId: sessionStorage.getItem('userId') || localStorage.getItem('userId'),
       profile: {},
       workingTimes: [],
       clockState: 'off',
@@ -508,6 +508,9 @@ export default {
         console.error('Logout error:', error)
       } finally {
         sessionStorage.clear()
+        localStorage.removeItem('xsrfToken')
+        localStorage.removeItem('userId')
+        localStorage.removeItem('role')
         this.$router.push('/login')
       }
     },

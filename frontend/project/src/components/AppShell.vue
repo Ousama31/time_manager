@@ -63,7 +63,7 @@ export default {
   .workspace-shell {
     display: block;
     padding-top: env(safe-area-inset-top);
-    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    padding-bottom: 52px;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
@@ -78,13 +78,13 @@ export default {
     z-index: 5;
     display: grid;
     grid-template-columns: repeat(var(--item-count), minmax(0, 1fr));
-    padding: 8px max(7px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+    padding: 4px max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));
     border-top: 1px solid var(--app-border);
     background: rgb(255 255 255 / 97%);
     box-shadow: 0 -5px 20px rgb(31 41 55 / 4%);
     backdrop-filter: blur(18px);
   }
-  .bottom-nav-item { display: grid; min-height: 52px; justify-items: center; align-content: center; gap: 4px; border: 0; border-radius: 10px; color: #89919c; background: transparent; font: inherit; font-size: 10px; cursor: pointer; }
+  .bottom-nav-item { display: grid; min-height: 42px; justify-items: center; align-content: center; gap: 2px; padding: 3px 6px; border: 0; border-radius: 8px; color: #89919c; background: transparent; font: inherit; font-size: 10px; cursor: pointer; }
   .bottom-nav-item.active { color: var(--app-accent-strong); background: var(--app-accent-soft); }
 }
 @media (max-width: 560px) {
@@ -111,11 +111,11 @@ export default {
 @media (max-width: 999px) {
   .main-column { width: 100%; margin: 0; }
   .page-content { padding: 28px 22px 36px; }
-  .bottom-nav-item { min-height: 58px; font-size: 12px; }
+  .bottom-nav-item { min-height: 44px; font-size: 11px; }
 }
 
 @media (max-width: 560px) {
   .page-content { padding: 22px 15px 30px; }
-  .bottom-nav-item { min-height: 56px; font-size: 11px; }
+  .bottom-nav-item { min-height: 42px; font-size: 10px; }
 }
 </style>

@@ -701,7 +701,7 @@ export default {
   .schedule-card { min-height: 78px; gap: 12px; margin-top: 12px; padding: 14px; }
   .schedule-card .text-action { display: none; }
   .schedule-copy strong { font-size: 13px; }
-  .bottom-navigation { position: fixed; right: 0; bottom: 0; left: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px 7px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid #e7e9ee; background: rgb(255 255 255 / 96%); backdrop-filter: blur(18px); }
+  .bottom-navigation { position: fixed; right: 0; bottom: 0; left: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); padding: 4px 7px; border-top: 1px solid #e7e9ee; background: rgb(255 255 255 / 96%); backdrop-filter: blur(18px); }
   .bottom-nav-item { display: grid; min-height: 52px; justify-items: center; align-content: center; gap: 4px; border: 0; color: #838a95; background: transparent; font: inherit; font-size: 10px; cursor: pointer; }
   .bottom-nav-item svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
   .bottom-nav-item.active { color: var(--accent); font-weight: 650; }

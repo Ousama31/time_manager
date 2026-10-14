@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="title desc">
+  <title id="title">Time Manager backend architecture</title>
+  <desc id="desc">Diagram showing requests flowing from the Vue frontend through the Phoenix endpoint and router, token authentication, controllers and permission checks, application contexts, Ecto schemas and repository, and PostgreSQL. It also shows user, clock, and working-time domains plus startup, migrations, and tests.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7fbff"/>
+      <stop offset="1" stop-color="#edf3fa"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172b4d"/>
+      <stop offset="1" stop-color="#263f67"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#54708f"/>
+    </marker>
+    <marker id="arrowLight" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#9ab0c8"/>
+    </marker>
+    <style>
+      text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #172b4d; }
+      .title { font-size: 34px; font-weight: 750; fill: #fff; }
+      .subtitle { font-size: 16px; fill: #dbe8f7; }
+      .section { font-size: 18px; font-weight: 750; letter-spacing: .4px; }
+      .card-title { font-size: 20px; font-weight: 750; }
+      .card-path { font-size: 14px; font-weight: 650; fill: #526a86; }
+      .body { font-size: 15px; fill: #344d6c; }
+      .small { font-size: 13px; fill: #526a86; }
+      .tiny { font-size: 12px; fill: #617791; }
+      .white { fill: #fff; }
+      .line { stroke: #54708f; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .soft-line { stroke: #9ab0c8; stroke-width: 2; fill: none; marker-end: url(#arrowLight); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1120" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1600" height="105" fill="url(#navy)"/>
+  <text x="52" y="49" class="title">Time Manager · Backend Architecture</text>
+  <text x="54" y="78" class="subtitle">How a request is authenticated, handled, checked, and stored</text>
+  <rect x="1300" y="28" width="246" height="42" rx="21" fill="#ffffff" opacity=".13"/>
+  <text x="1423" y="55" text-anchor="middle" class="small white">Elixir · Phoenix · Ecto · PostgreSQL</text>
+
+  <text x="52" y="145" class="section">1 · HTTP REQUEST PATH</text>
+
+  <!-- Request path cards -->
+  <g>
+    <rect x="50" y="166" width="335" height="190" rx="18" fill="#fff" stroke="#9ac3ee" stroke-width="2"/>
+    <rect x="50" y="166" width="335" height="11" rx="6" fill="#3682d8"/>
+    <circle cx="82" cy="211" r="16" fill="#e6f2ff"/>
+    <text x="82" y="217" text-anchor="middle" font-size="16" font-weight="750" fill="#2468b2">1</text>
+    <text x="108" y="216" class="card-title">Vue frontend</text>
+    <text x="74" y="251" class="card-path">frontend/project/src/api.js</text>
+    <text x="74" y="285" class="body">Sends JSON over HTTP.</text>
+    <text x="74" y="309" class="body">Adds x-xsrf-token to protected</text>
+    <text x="74" y="333" class="body">requests; omits it for sign-in/up.</text>
+  </g>
+  <g>
+    <rect x="425" y="166" width="335" height="190" rx="18" fill="#fff" stroke="#a7c7ef" stroke-width="2"/>
+    <rect x="425" y="166" width="335" height="11" rx="6" fill="#4c73c6"/>
+    <circle cx="457" cy="211" r="16" fill="#edf0ff"/>
+    <text x="457" y="217" text-anchor="middle" font-size="16" font-weight="750" fill="#435dac">2</text>
+    <text x="483" y="216" class="card-title">Phoenix endpoint + router</text>
+    <text x="449" y="251" class="card-path">endpoint.ex · router.ex</text>
+    <text x="449" y="285" class="body">Endpoint receives and parses</text>
+    <text x="449" y="309" class="body">the request. Router matches its</text>
+    <text x="449" y="333" class="body">method and path to an action.</text>
+  </g>
+  <g>
+    <rect x="800" y="166" width="335" height="190" rx="18" fill="#fff" stroke="#8acdb2" stroke-width="2"/>
+    <rect x="800" y="166" width="335" height="11" rx="6" fill="#15966c"/>
+    <circle cx="832" cy="211" r="16" fill="#e4f7ef"/>
+    <text x="832" y="217" text-anchor="middle" font-size="16" font-weight="750" fill="#087b55">3</text>
+    <text x="858" y="216" class="card-title">Authentication plug</text>
+    <text x="824" y="251" class="card-path">plugs/auth_plug.ex</text>
+    <text x="824" y="285" class="body">Public sign-in/up skip token checks.</text>
+    <text x="824" y="309" class="body">Protected routes verify token, age,</text>
+    <text x="824" y="333" class="body">and active account; then set current_user.</text>
+  </g>
+  <g>
+    <rect x="1175" y="166" width="375" height="190" rx="18" fill="#fff" stroke="#f0c58e" stroke-width="2"/>
+    <rect x="1175" y="166" width="375" height="11" rx="6" fill="#d98a26"/>
+    <circle cx="1207" cy="211" r="16" fill="#fff1df"/>
+    <text x="1207" y="217" text-anchor="middle" font-size="16" font-weight="750" fill="#a95e0b">4</text>
+    <text x="1233" y="216" class="card-title">Controller + access rules</text>
+    <text x="1199" y="251" class="card-path">controllers/*_controller.ex</text>
+    <text x="1199" y="285" class="body">Handles request and response.</text>
+    <text x="1199" y="309" class="body">Checks role and record ownership</text>
+    <text x="1199" y="333" class="body">before calling application logic.</text>
+  </g>
+  <path d="M386 260 H416" class="line"/>
+  <path d="M761 260 H791" class="line"/>
+  <path d="M1136 260 H1166" class="line"/>
+
+  <rect x="50" y="377" width="1500" height="58" rx="14" fill="#fff" stroke="#c8d6e6"/>
+  <text x="800" y="401" text-anchor="middle" class="body" font-weight="700">If authentication fails: 401 Unauthorized · If access rules fail: 403 Forbidden (or a route-specific response)</text>
+  <text x="800" y="423" text-anchor="middle" class="small">The token identifies the caller; controller and context rules decide which data that caller may use.</text>
+
+  <text x="52" y="479" class="section">2 · APPLICATION AREAS</text>
+  <text x="1548" y="479" text-anchor="end" class="small">Controllers call contexts; contexts use schemas, changesets, and the Repo.</text>
+
+  <!-- Domain cards -->
+  <g>
+    <rect x="50" y="500" width="470" height="192" rx="18" fill="#fff" stroke="#7bb6eb" stroke-width="2"/>
+    <rect x="50" y="500" width="470" height="48" rx="18" fill="#e8f4ff"/>
+    <rect x="50" y="530" width="470" height="18" fill="#e8f4ff"/>
+    <text x="75" y="531" class="card-title">Accounts &amp; users</text>
+    <text x="75" y="570" class="card-path">accounts.ex · accounts/user.ex · UserController · AuthController</text>
+    <text x="75" y="602" class="body">Registration, sign-in, token checks, profiles, roles,</text>
+    <text x="75" y="626" class="body">manager assignment, and user-data access decisions.</text>
+    <text x="75" y="663" class="small">Data: user identity · password hash · role · status · manager_id</text>
+  </g>
+  <g>
+    <rect x="565" y="500" width="470" height="192" rx="18" fill="#fff" stroke="#79c9aa" stroke-width="2"/>
+    <rect x="565" y="500" width="470" height="48" rx="18" fill="#e6f8f0"/>
+    <rect x="565" y="530" width="470" height="18" fill="#e6f8f0"/>
+    <text x="590" y="531" class="card-title">Clock state history</text>
+    <text x="590" y="570" class="card-path">clocks.ex · clocks/clock.ex · ClockController</text>
+    <text x="590" y="602" class="body">Reads the latest state and records each transition:</text>
+    <text x="590" y="626" class="body">off ↔ working, working ↔ break, break → off.</text>
+    <text x="590" y="663" class="small">Data: timestamp · state · status · owning user_id</text>
+  </g>
+  <g>
+    <rect x="1080" y="500" width="470" height="192" rx="18" fill="#fff" stroke="#c3a5ee" stroke-width="2"/>
+    <rect x="1080" y="500" width="470" height="48" rx="18" fill="#f2ebff"/>
+    <rect x="1080" y="530" width="470" height="18" fill="#f2ebff"/>
+    <text x="1105" y="531" class="card-title">Work &amp; break intervals</text>
+    <text x="1105" y="570" class="card-path">workingtimes.ex · workingtimes/workingtime.ex · WorkingtimeController</text>
+    <text x="1105" y="602" class="body">Lists and changes completed time intervals;</text>
+    <text x="1105" y="626" class="body">validates start, end, owner, and kind.</text>
+    <text x="1105" y="663" class="small">Data: start · end · kind (work or break) · user_id</text>
+  </g>
+
+  <!-- Controller to domain connectors -->
+  <path d="M1360 357 V462 H285 V492" class="soft-line"/>
+  <path d="M1360 462 H800 V492" class="soft-line"/>
+  <path d="M1360 462 H1315 V492" class="soft-line"/>
+
+  <text x="52" y="733" class="section">3 · DATA STORAGE</text>
+
+  <g>
+    <rect x="50" y="754" width="460" height="146" rx="18" fill="#fff" stroke="#c8d6e6" stroke-width="2"/>
+    <text x="76" y="791" class="card-title">Schemas + changesets</text>
+    <text x="76" y="822" class="card-path">user.ex · clock.ex · workingtime.ex</text>
+    <text x="76" y="853" class="body">Cast allowed fields and validate required</text>
+    <text x="76" y="877" class="body">values before a database write.</text>
+  </g>
+  <g>
+    <rect x="570" y="754" width="430" height="146" rx="18" fill="#fff" stroke="#c8d6e6" stroke-width="2"/>
+    <text x="596" y="791" class="card-title">Ecto Repo</text>
+    <text x="596" y="822" class="card-path">lib/time_manager/repo.ex</text>
+    <text x="596" y="853" class="body">Runs database reads, inserts, updates,</text>
+    <text x="596" y="877" class="body">deletes, and transactions.</text>
+  </g>
+  <g>
+    <rect x="1060" y="754" width="490" height="146" rx="18" fill="#fff" stroke="#a996e8" stroke-width="2"/>
+    <rect x="1060" y="754" width="490" height="11" rx="6" fill="#6842b8"/>
+    <text x="1086" y="801" class="card-title">PostgreSQL</text>
+    <text x="1086" y="832" class="body">users · clocks · workingtime</text>
+    <text x="1086" y="862" class="small">Tables are created and changed by versioned migrations.</text>
+    <text x="1086" y="884" class="card-path">priv/repo/migrations/</text>
+  </g>
+  <path d="M285 693 V744" class="soft-line"/>
+  <path d="M800 693 V744" class="soft-line"/>
+  <path d="M1315 693 V744" class="soft-line"/>
+  <path d="M511 827 H561" class="line"/>
+  <path d="M1001 827 H1051" class="line"/>
+
+  <!-- Supporting components -->
+  <rect x="50" y="930" width="1500" height="145" rx="18" fill="#eaf0f7" stroke="#c8d6e6" stroke-width="2"/>
+  <text x="76" y="968" class="section">SUPPORTING PARTS</text>
+  <line x1="800" y1="955" x2="800" y2="1050" stroke="#c6d3e1" stroke-width="2"/>
+  <line x1="1175" y1="955" x2="1175" y2="1050" stroke="#c6d3e1" stroke-width="2"/>
+  <text x="76" y="1005" class="card-title">Application startup</text>
+  <text x="76" y="1033" class="small">application.ex supervises Telemetry, Repo, DNS Cluster, PubSub, and Endpoint.</text>
+  <text x="830" y="1005" class="card-title">JSON responses and errors</text>
+  <text x="830" y="1033" class="small">*_json.ex shapes output; fallback and error views format failures.</text>
+  <text x="1205" y="1005" class="card-title">Tests</text>
+  <text x="1205" y="1033" class="small">Context tests cover rules; controller tests exercise HTTP routes.</text>
+  <text x="800" y="1100" text-anchor="middle" class="tiny">Current layout based on the backend source tree and router · See backend_overview.md for route details and examples</text>
+</svg>

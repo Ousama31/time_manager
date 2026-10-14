@@ -19,25 +19,9 @@ The browser should not connect directly to PostgreSQL. It talks to the API, and 
 
 ## 2. Big-picture architecture
 
-```mermaid
-flowchart LR
-  Person[Employee, manager, or admin] --> Browser[Vue user interface]
-  Browser -->|HTTP request with JSON| Endpoint[Phoenix endpoint]
-  Endpoint --> Router[Router: selects a route]
-  Router --> Pipeline{Public or protected?}
-  Pipeline -->|Sign-in and sign-up| Controller[Controller action]
-  Pipeline -->|Other API routes| Auth[AuthPlug: checks token]
-  Auth -->|Valid token; current user assigned| Controller
-  Auth -->|Missing or invalid token| Reject[401 Unauthorized]
-  Controller --> Permission[Role and ownership checks]
-  Permission --> Context[Accounts, Clocks, or Workingtimes]
-  Context --> Changeset[Schema and changeset validation]
-  Changeset --> Repo[Ecto Repo]
-  Repo --> Database[(PostgreSQL)]
-  Database --> Repo --> Context --> Controller
-  Controller --> Serializer[JSON view / serializer]
-  Serializer -->|JSON response| Browser
-```
+![Current Time Manager backend architecture diagram](backend_architecture.svg)
+
+The diagram shows the main code layers and how they connect. The detailed route list and request examples later in this guide explain each path and rule.
 
 In plain terms, a request passes through these steps:
 

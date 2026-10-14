@@ -112,12 +112,9 @@ import { getDisplayName, getInitials } from '../utils/identity'
 import InitialAvatar from './InitialAvatar.vue'
 import AppShell from './AppShell.vue'
 import WeeklyHoursChart from './WeeklyHoursChart.vue'
-<<<<<<< Updated upstream
 import offlineSync from '../offlineSync'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
-=======
 import { createEmailDraftUrl } from '../utils/emailDraft'
->>>>>>> Stashed changes
 
 const configuredAutoClockOutSeconds = Number(import.meta.env.VITE_AUTO_CLOCK_OUT_SECONDS)
 const AUTO_CLOCK_OUT_SECONDS = configuredAutoClockOutSeconds > 0 ? configuredAutoClockOutSeconds : 8 * 60 * 60 // 8 hours

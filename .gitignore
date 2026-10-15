@@ -31,3 +31,5 @@ Theme_05/bs_auth_api/*.ez
 Theme_05/bs_auth_api/tmp/
 Theme_05/bs_auth_api/bs_auth_api-*.tar
 Theme_05/bs_auth_api/.elixir_ls/
+scripts/__pycache__/generate_project_guide.cpython-314.pyc
+scripts/generate_project_guide.py

@@ -10,6 +10,10 @@ defmodule TimeManagerWeb.UserControllerTest do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
+  defp hash_password(password) do
+    :crypto.hash(:sha256, password) |> Base.encode16(case: :lower)
+  end
+
   test "admin lists users", %{conn: conn} do
     admin = admin_fixture()
     employee = user_fixture()
@@ -101,7 +105,7 @@ defmodule TimeManagerWeb.UserControllerTest do
       username: "new-employee",
       email: "new@example.com",
       full_name: "New Employee",
-      password: "secure-password"
+      password: hash_password("secure-password")
     }
 
     conn = post(conn, ~p"/api/users/sign_up", user: params)
@@ -119,7 +123,7 @@ defmodule TimeManagerWeb.UserControllerTest do
       username: "flat-user",
       email: "flat@example.com",
       full_name: "Flat User",
-      password: "secure-password"
+      password: hash_password("secure-password")
     }
 
     conn = post(conn, ~p"/api/users/sign_up", params)
@@ -133,7 +137,7 @@ defmodule TimeManagerWeb.UserControllerTest do
       username: "updated-user",
       email: "updated@example.com",
       full_name: "Updated User",
-      password: "new-secure-password"
+      password: hash_password("new-secure-password")
     }
 
     conn = authenticated_as(conn, user) |> patch(~p"/api/users/#{user.id}", user: attrs)

@@ -18,7 +18,7 @@ unless TimeManager.Repo.get_by(TimeManager.Accounts.User, username: "admin") do
     username: "admin",
     full_name: "Admin User",
     email: "admin@company.com",
-    password_hash: Bcrypt.hash_pwd_salt("admin123"),
+    password_hash: Bcrypt.hash_pwd_salt(:crypto.hash(:sha256, "admin123") |> Base.encode16(case: :lower)),
     role: :admin
   })
 end
@@ -28,7 +28,7 @@ unless TimeManager.Repo.get_by(TimeManager.Accounts.User, username: "test_manage
     username: "test_manager",
     full_name: "Test Manager",
     email: "manager@company.com",
-    password_hash: Bcrypt.hash_pwd_salt("manager123"),
+    password_hash: Bcrypt.hash_pwd_salt(:crypto.hash(:sha256, "manager123") |> Base.encode16(case: :lower)),
     role: :manager
   })
 end

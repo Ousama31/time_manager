@@ -7,12 +7,13 @@ defmodule TimeManager.WorkingtimesTest do
     alias TimeManager.Workingtimes.Workingtime
 
     import TimeManager.WorkingtimesFixtures
+    import TimeManager.AccountsFixtures
 
     @invalid_attrs %{start: nil, end: nil}
 
-    test "list_workingtime/0 returns all workingtime" do
+    test "list_workingtime/2 returns a user's workingtime" do
       workingtime = workingtime_fixture()
-      assert Workingtimes.list_workingtime() == [workingtime]
+      assert Workingtimes.list_workingtime(to_string(workingtime.user_id), %{}) == [workingtime]
     end
 
     test "get_workingtime!/1 returns the workingtime with given id" do
@@ -21,10 +22,16 @@ defmodule TimeManager.WorkingtimesTest do
     end
 
     test "create_workingtime/1 with valid data creates a workingtime" do
-      valid_attrs = %{start: ~U[2026-09-21 14:23:00Z], end: ~U[2026-09-21 14:23:00Z]}
+      user = user_fixture()
+
+      valid_attrs = %{
+        start: ~U[2026-09-21 14:19:00Z],
+        end: ~U[2026-09-21 14:23:00Z],
+        user_id: user.id
+      }
 
       assert {:ok, %Workingtime{} = workingtime} = Workingtimes.create_workingtime(valid_attrs)
-      assert workingtime.start == ~U[2026-09-21 14:23:00Z]
+      assert workingtime.start == ~U[2026-09-21 14:19:00Z]
       assert workingtime.end == ~U[2026-09-21 14:23:00Z]
     end
 

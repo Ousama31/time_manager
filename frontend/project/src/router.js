@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-import Home from './components/Home.vue';
-import AdminDashboard from './components/AdminDashboard.vue';
-import ManagerDashboard from './components/ManagerDashboard.vue';
-import SignIn from './components/SignIn.vue';
-import SignUp from './components/SignUp.vue';
+import Home from './components/employee/Home.vue';
+import AdminDashboard from './components/admin/AdminDashboard.vue';
+import ManagerDashboard from './components/manager/ManagerDashboard.vue';
+import SignIn from './components/auth/SignIn.vue';
+import SignUp from './components/auth/SignUp.vue';
 
 const routes = [
   { path: '/', component: Home, meta: { requiresAuth: true } },

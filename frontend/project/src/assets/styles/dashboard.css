@@ -1,0 +1,115 @@
+/* Shared visual foundation for every role dashboard. */
+.workspace-shell {
+  --dashboard-surface: var(--app-surface);
+  --dashboard-surface-border: var(--app-border);
+  --dashboard-surface-radius: var(--app-radius-panel);
+  --dashboard-surface-shadow: var(--app-shadow-panel);
+  --dashboard-title-color: var(--app-text);
+  --dashboard-title-size: clamp(28px, 3vw, 36px);
+  --dashboard-muted: var(--app-muted);
+}
+
+.workspace-shell .dashboard-surface {
+  border: 1px solid var(--dashboard-surface-border);
+  border-radius: var(--dashboard-surface-radius);
+  background: var(--dashboard-surface);
+  box-shadow: var(--dashboard-surface-shadow);
+}
+
+.workspace-shell .dashboard-heading .dashboard-title {
+  color: var(--dashboard-title-color);
+  font-size: var(--dashboard-title-size);
+  font-weight: 720;
+  letter-spacing: -0.8px;
+}
+
+.workspace-shell .dashboard-heading {
+  margin-bottom: 28px;
+}
+
+.workspace-shell .dashboard-heading .dashboard-eyebrow {
+  margin: 0 0 7px;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workspace-shell .dashboard-heading .dashboard-description {
+  margin: 7px 0 0;
+  color: var(--dashboard-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.workspace-shell .dashboard-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px;
+}
+
+.workspace-shell .dashboard-profile-name {
+  margin: 0 0 6px;
+  color: var(--app-text);
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.workspace-shell .dashboard-profile-card p {
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 14px;
+}
+
+.workspace-shell .dashboard-profile-avatar {
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  font-size: 19px;
+}
+
+.workspace-shell .dashboard-profile-role {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: var(--app-accent-strong);
+  background: var(--app-accent-soft);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.workspace-shell .dashboard-profile-logout {
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 0 17px;
+  border: 1px solid var(--app-border);
+  border-radius: 11px;
+  color: #48515c;
+  background: var(--app-surface);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.workspace-shell .dashboard-profile-logout:hover,
+.workspace-shell .dashboard-profile-logout:focus-visible {
+  border-color: #d2d8e2;
+  background: #f7f9fc;
+  outline: none;
+}
+
+@media (max-width: 999px) {
+  .workspace-shell .dashboard-surface {
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace-shell .dashboard-profile-card {
+    padding: 20px;
+  }
+}

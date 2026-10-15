@@ -7,6 +7,7 @@ defmodule TimeManager.ClocksTest do
     alias TimeManager.Clocks.Clock
 
     import TimeManager.ClocksFixtures
+    import TimeManager.AccountsFixtures
 
     @invalid_attrs %{status: nil, time: nil}
 
@@ -21,7 +22,14 @@ defmodule TimeManager.ClocksTest do
     end
 
     test "create_clock/1 with valid data creates a clock" do
-      valid_attrs = %{status: true, time: ~U[2026-09-21 14:19:00Z]}
+      user = user_fixture()
+
+      valid_attrs = %{
+        status: true,
+        state: "working",
+        time: ~U[2026-09-21 14:19:00Z],
+        user_id: user.id
+      }
 
       assert {:ok, %Clock{} = clock} = Clocks.create_clock(valid_attrs)
       assert clock.status == true

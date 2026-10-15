@@ -13,7 +13,18 @@ defmodule TimeManagerWeb.ClockController do
 
   # Switch between work, break, and off-clock states.
   def create(conn, %{"userID" => user_id} = params) do
+    if not TimeManager.Accounts.can_access_user_data?(conn.assigns.current_user, user_id) do
+      conn
+      |> put_status(:forbidden)
+      |> json(%{error: "You cannot change this user's clock status"})
+    else
+      create_transition(conn, user_id, params)
+    end
+  end
+
+  defp create_transition(conn, user_id, params) do
     last_clock = Clocks.get_clock_by_user(user_id)
+
     current_state =
       case last_clock do
         nil -> "off"

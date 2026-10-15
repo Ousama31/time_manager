@@ -41,8 +41,8 @@ export default {
 .weekly-hours-chart--employee .week-day { color: #9aa0a9; font-size: 11px; }
 .weekly-hours-chart--employee .week-day.is-today { color: var(--app-accent); font-weight: 700; }
 
-.weekly-hours-chart--manager { height: 116px; gap: clamp(9px, 2vw, 20px); margin-top: 8px; }
-.weekly-hours-chart--manager .bar-day { display: grid; width: 30px; height: 100%; justify-items: center; align-content: end; gap: 5px; }
+.weekly-hours-chart--manager { height: 160px; justify-content: space-around; gap: 12px; margin-top: 16px; padding: 0 clamp(8px, 3vw, 32px); }
+.weekly-hours-chart--manager .bar-day { display: grid; width: auto; height: 100%; min-width: 30px; flex: 1; justify-items: center; align-content: end; gap: 8px; }
 .weekly-hours-chart--manager .bar-track { width: 25px; height: 86px; border-radius: 7px; background: #e8ebf1; }
 .weekly-hours-chart--manager .bar-fill { min-height: 0; border-radius: 7px; background: #1683f8; transition-duration: .25s; }
 .weekly-hours-chart--manager small { color: #929baa; font-size: 12px; }

@@ -55,6 +55,8 @@ defmodule TimeManager.Workingtimes do
   """
   def get_workingtime!(id), do: Repo.get!(Workingtime, id)
 
+  def get_workingtime(id), do: Repo.get(Workingtime, id)
+
   @doc """
   Creates a workingtime.
 

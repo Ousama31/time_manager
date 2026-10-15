@@ -59,13 +59,13 @@ flowchart TB
 
 Reusable files:
 
-- `src/components/AppShell.vue` lays out the sidebar/navigation, page content, and profile/logout area. It receives the current navigation items and active tab from its parent.
-- `src/components/AppNavItem.vue` renders a single navigation item.
-- `src/components/InitialAvatar.vue` creates a colored initials avatar from a person's display name.
-- `src/components/WeeklyHoursChart.vue` draws weekly hours for employee and manager views.
+- `src/components/dashboard/AppShell.vue` lays out the sidebar/navigation, page content, and profile/logout area. It receives the current navigation items and active tab from its parent.
+- `src/components/dashboard/AppNavItem.vue` renders a single navigation item.
+- `src/components/shared/InitialAvatar.vue` creates a colored initials avatar from a person's display name.
+- `src/components/dashboard/WeeklyHoursChart.vue` draws weekly hours for employee and manager views.
 - `src/utils/identity.js` shares display-name, initials, and avatar-tone helpers.
-- `src/assets/main.css` contains the global light theme, shared design variables, typography, and base styles. Dashboard-specific layout styling is kept inside its Vue component.
-- `src/components/AuthBrandPanel.vue` is used by sign-in and sign-up screens for the authentication brand area.
+- `src/assets/main.css` contains the global light theme, shared design variables, typography, and base styles. `src/assets/styles/auth.css` shares sign-in/sign-up styling, and `src/assets/styles/dashboard.css` centralizes common dashboard surfaces, headings, and profile styling. Dashboard-specific layout and content rules are in `Home.css`, `ManagerDashboard.css`, and `AdminDashboard.css`, beside their Vue views.
+- `src/components/auth/AuthBrandPanel.vue` is used by sign-in and sign-up screens for the authentication brand area.
 
 ## 4. Sign-in, sign-up, and browser session
 
@@ -224,12 +224,18 @@ npm run preview
 | `src/App.vue` | Root router outlet |
 | `src/router.js` | Route definitions and browser-side role redirect |
 | `src/api.js` | Axios setup and auth header |
-| `src/components/SignIn.vue` | Login form/session storage |
-| `src/components/SignUp.vue` | Account registration form |
-| `src/components/Home.vue` | Employee clock, break, time, chart, and profile UI |
-| `src/components/ManagerDashboard.vue` | Manager team view and summaries |
-| `src/components/AdminDashboard.vue` | Team and user administration |
-| `src/components/AppShell.vue` | Shared dashboard layout/navigation |
-| `src/components/WeeklyHoursChart.vue` | Shared weekly chart |
+| `src/components/admin/AdminDashboard.vue` | Team and user administration |
+| `src/components/admin/AdminDashboard.css` | Administrator-only layout and content styling |
+| `src/components/manager/ManagerDashboard.vue` | Manager team view and summaries |
+| `src/components/manager/ManagerDashboard.css` | Manager-only layout and content styling |
+| `src/components/employee/Home.vue` | Employee clock, break, time, chart, and profile UI |
+| `src/components/employee/Home.css` | Employee-only layout and content styling |
+| `src/components/auth/SignIn.vue` | Login form/session storage |
+| `src/components/auth/SignUp.vue` | Account registration form |
+| `src/components/dashboard/AppShell.vue` | Shared dashboard layout/navigation |
+| `src/components/dashboard/WeeklyHoursChart.vue` | Shared weekly chart |
+| `src/components/shared/InitialAvatar.vue` | Reusable initials avatar |
 | `src/assets/main.css` | Global theme and base styles |
+| `src/assets/styles/auth.css` | Shared sign-in and sign-up styling |
+| `src/assets/styles/dashboard.css` | Shared employee, manager, and admin dashboard styling |
 

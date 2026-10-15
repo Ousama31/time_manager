@@ -8,12 +8,18 @@ defmodule TimeManager.WorkingtimesFixtures do
   Generate a workingtime.
   """
   def workingtime_fixture(attrs \\ %{}) do
+    attrs = Enum.into(attrs, %{})
+    user_id = Map.get(attrs, :user_id) || TimeManager.AccountsFixtures.user_fixture().id
+
     {:ok, workingtime} =
-      attrs
-      |> Enum.into(%{
-        end: ~U[2026-09-21 14:23:00Z],
-        start: ~U[2026-09-21 14:23:00Z]
-      })
+      Map.merge(
+        %{
+          end: ~U[2026-09-21 14:23:00Z],
+          start: ~U[2026-09-21 14:19:00Z],
+          user_id: user_id
+        },
+        attrs
+      )
       |> TimeManager.Workingtimes.create_workingtime()
 
     workingtime

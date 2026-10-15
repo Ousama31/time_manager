@@ -10,22 +10,28 @@ defmodule TimeManager.AccountsTest do
 
     @invalid_attrs %{username: nil, email: nil}
 
-    test "list_users/0 returns all users" do
+    test "list_users/1 returns all users" do
       user = user_fixture()
-      assert Accounts.list_users() == [user]
+      [listed_user] = Accounts.list_users(%{})
+      assert listed_user.id == user.id
     end
 
     test "get_user!/1 returns the user with given id" do
       user = user_fixture()
-      assert Accounts.get_user!(user.id) == user
+      assert Accounts.get_user!(user.id).id == user.id
     end
 
     test "create_user/1 with valid data creates a user" do
-      valid_attrs = %{username: "some username", email: "some email"}
+      valid_attrs = %{
+        username: "some username",
+        email: "some@example.com",
+        full_name: "Some User",
+        password: "secure-password"
+      }
 
       assert {:ok, %User{} = user} = Accounts.create_user(valid_attrs)
       assert user.username == "some username"
-      assert user.email == "some email"
+      assert user.email == "some@example.com"
     end
 
     test "create_user/1 with invalid data returns error changeset" do
@@ -34,17 +40,23 @@ defmodule TimeManager.AccountsTest do
 
     test "update_user/2 with valid data updates the user" do
       user = user_fixture()
-      update_attrs = %{username: "some updated username", email: "some updated email"}
+
+      update_attrs = %{
+        username: "some updated username",
+        email: "updated@example.com",
+        full_name: "Updated User",
+        password: "new-secure-password"
+      }
 
       assert {:ok, %User{} = user} = Accounts.update_user(user, update_attrs)
       assert user.username == "some updated username"
-      assert user.email == "some updated email"
+      assert user.email == "updated@example.com"
     end
 
     test "update_user/2 with invalid data returns error changeset" do
       user = user_fixture()
       assert {:error, %Ecto.Changeset{}} = Accounts.update_user(user, @invalid_attrs)
-      assert user == Accounts.get_user!(user.id)
+      assert Accounts.get_user!(user.id).email == user.email
     end
 
     test "delete_user/1 deletes the user" do

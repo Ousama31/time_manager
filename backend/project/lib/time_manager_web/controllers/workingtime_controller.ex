@@ -18,37 +18,69 @@ defmodule TimeManagerWeb.WorkingtimeController do
   end
 
   def create(conn, %{"userID" => user_id, "workingtime" => workingtime_params}) do
-    # Accept IDs from URL parameters or direct calls.
-    parsed_user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
-    workingtime_params = Map.put(workingtime_params, "user_id", parsed_user_id)
+    if TimeManager.Accounts.can_access_user_data?(conn.assigns.current_user, user_id) do
+      # Accept IDs from URL parameters or direct calls.
+      parsed_user_id = if is_binary(user_id), do: String.to_integer(user_id), else: user_id
+      workingtime_params = Map.put(workingtime_params, "user_id", parsed_user_id)
 
-    with {:ok, %Workingtime{} = workingtime} <-
-           Workingtimes.create_workingtime(workingtime_params) do
+      with {:ok, %Workingtime{} = workingtime} <-
+             Workingtimes.create_workingtime(workingtime_params) do
+        conn
+        |> put_status(:created)
+        |> render(:show, workingtime: workingtime)
+      end
+    else
       conn
-      |> put_status(:created)
-      |> render(:show, workingtime: workingtime)
+      |> put_status(:forbidden)
+      |> json(%{error: "You cannot create working time for this user"})
     end
   end
 
   def show(conn, %{"id" => id}) do
-    workingtime = Workingtimes.get_workingtime!(id)
-    render(conn, :show, workingtime: workingtime)
+    case Workingtimes.get_workingtime(id) do
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "Working time not found"})
+
+      workingtime ->
+        if TimeManager.Accounts.can_access_user_data?(
+             conn.assigns.current_user,
+             workingtime.user_id
+           ) do
+          render(conn, :show, workingtime: workingtime)
+        else
+          conn
+          |> put_status(:forbidden)
+          |> json(%{error: "You cannot view this user's working times"})
+        end
+    end
   end
 
   def update(conn, %{"id" => id, "workingtime" => workingtime_params}) do
     workingtime = Workingtimes.get_workingtime!(id)
 
-    with {:ok, %Workingtime{} = workingtime} <-
-           Workingtimes.update_workingtime(workingtime, workingtime_params) do
-      render(conn, :show, workingtime: workingtime)
+    if TimeManager.Accounts.can_access_user_data?(conn.assigns.current_user, workingtime.user_id) do
+      with {:ok, %Workingtime{} = workingtime} <-
+             Workingtimes.update_workingtime(workingtime, workingtime_params) do
+        render(conn, :show, workingtime: workingtime)
+      end
+    else
+      conn
+      |> put_status(:forbidden)
+      |> json(%{error: "You cannot modify this user's working times"})
     end
   end
 
   def delete(conn, %{"id" => id}) do
     workingtime = Workingtimes.get_workingtime!(id)
 
-    with {:ok, %Workingtime{}} <- Workingtimes.delete_workingtime(workingtime) do
-      send_resp(conn, :no_content, "")
+    if TimeManager.Accounts.can_access_user_data?(conn.assigns.current_user, workingtime.user_id) do
+      with {:ok, %Workingtime{}} <- Workingtimes.delete_workingtime(workingtime) do
+        send_resp(conn, :no_content, "")
+      end
+    else
+      conn
+      |> put_status(:forbidden)
+      |> json(%{error: "You cannot modify this user's working times"})
     end
   end
 end

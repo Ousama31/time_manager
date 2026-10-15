@@ -17,12 +17,26 @@ time_manager/
 ├── backend/
 │   └── project/
 │       ├── Dockerfile
+│       ├── API_DOCUMENTATION.md
+│       ├── AUTHENTICATION.md
+│       ├── CYBERSECURITY.md
+│       ├── openapi.yaml
 │       └── entrypoint.sh
 └── frontend/
     └── project/
         ├── Dockerfile
         └── nginx.conf
 ```
+
+## Documentation
+
+- **[API Documentation](backend/project/API_DOCUMENTATION.md)**: Exhaustive endpoints catalog, query parameters, payloads, and JSON schemas.
+- **[OpenAPI 3.0 Specification](backend/project/openapi.yaml)**: Importable into Swagger UI, Postman, and API tools.
+- **[Authentication & Access Control](backend/project/AUTHENTICATION.md)**: Bcrypt hashing, Phoenix.Token lifecycle, AuthPlug, and RBAC matrix.
+- **[Cybersecurity Architecture & Safeguards](backend/project/CYBERSECURITY.md)**: OWASP Top 10 API & Mobile defenses, IDOR protection, and checklist.
+- **[Backend Architecture & File Guide](backend/project/architecture.md)**
+- **[Frontend Architecture & File Guide](frontend/project/architecture.md)**
+
 
 
 ## Environment configuration

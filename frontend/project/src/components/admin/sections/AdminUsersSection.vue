@@ -14,7 +14,7 @@
               <thead><tr><th scope="col" class="user-column">USER <button aria-label="Sort users">↕</button></th><th scope="col">ROLE</th><th scope="col">STATUS</th><th scope="col">JOINED DATE <button aria-label="Sort by joined date">↕</button></th><th scope="col" class="actions-heading">ACTION</th></tr></thead>
               <tbody>
                 <tr v-for="user in filteredUsers" :key="user.email">
-                  <td class="user-cell"><button type="button" class="user-stats-trigger" :aria-label="`View statistics for ${user.name}`" @click="openStatistics(user)"><InitialAvatar :tone="user.avatarTone" :initials="user.initials" /><span class="user-identity"><strong>{{ user.name }}</strong><small>{{ user.email }}</small></span></button></td>
+                  <td class="user-cell"><button type="button" class="user-stats-trigger" :aria-label="`View statistics for ${user.name}`" @click="openStatistics(user)"><InitialAvatar :tone="user.avatarTone" :initials="user.initials" /><span class="user-identity"><span class="user-name-line"><strong>{{ user.name }}</strong><span class="role-badge role-badge-inline" :class="roleClass(user.role)"><svg v-if="user.role === 'Admin'" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 18 1.2-8 4.1 3.4L12 6l1.7 7.4 4.1-3.4L19 18H5ZM5 21h14"/></svg><svg v-else-if="user.role === 'Manager'" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.2-2.9 7.5-7 9-4.1-1.5-7-4.8-7-9V6l7-2.5Z"/><path d="m9 12 2 2 4-4"/></svg><svg v-else viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>{{ user.role }}</span></span><small>{{ user.email }}</small></span></button></td>
                   <td data-label="Role"><span class="role-badge" :class="roleClass(user.role)"><svg v-if="user.role === 'Admin'" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 18 1.2-8 4.1 3.4L12 6l1.7 7.4 4.1-3.4L19 18H5ZM5 21h14"/></svg><svg v-else-if="user.role === 'Manager'" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 19 6v5.5c0 4.2-2.9 7.5-7 9-4.1-1.5-7-4.8-7-9V6l7-2.5Z"/><path d="m9 12 2 2 4-4"/></svg><svg v-else viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>{{ user.role }}</span></td>
                   <td data-label="Status"><span class="status-badge" :class="user.status === 'Active' ? 'status-active' : 'status-inactive'"><i></i>{{ user.status }}</span></td>
                   <td class="joined-cell" data-label="Joined">{{ user.joined }}</td>
@@ -82,6 +82,8 @@ export default {
 .admin-dashboard .users-table tbody tr { transition: background .14s ease; }
 .admin-dashboard .users-table tbody tr:hover { background: #fbfcfe; }
 .admin-dashboard .user-cell { display: flex; align-items: center; gap: 10px; }
+.admin-dashboard .user-name-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.admin-dashboard .role-badge-inline { display: none; }
 .admin-dashboard .joined-cell { color: #697587 !important; }
 .admin-dashboard .actions-heading { width: 235px; text-align: right; padding-right: 20px !important; }
 .admin-dashboard .action-cell { padding-right: 20px !important; }
@@ -118,9 +120,10 @@ export default {
   .admin-dashboard .users-table tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 3px;
+    row-gap: 8px;
     column-gap: 12px;
-    padding: 10px 14px;
+    align-items: center;
+    padding: 11px 14px;
     border: 1px solid var(--app-border);
     border-radius: 11px;
     background: var(--app-surface);
@@ -137,13 +140,14 @@ export default {
     font-size: 11px;
   }
   .admin-dashboard .users-table td:first-child { grid-column: 1; grid-row: 1; min-width: 0; align-self: center; }
+  .admin-dashboard .role-badge-inline { display: inline-flex !important; align-items: center; gap: 4px; min-height: 20px; padding: 0 7px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+  .admin-dashboard .role-badge-inline svg { width: 12px; height: 12px; }
+  .admin-dashboard .users-table td[data-label="Role"] { display: none !important; }
   .admin-dashboard .users-table td:nth-child(3) { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; }
   .admin-dashboard .users-table td:nth-child(3)::before { display: none; }
-  .admin-dashboard .users-table .joined-cell { grid-column: 1; grid-row: 2; font-size: 11px; color: var(--app-muted); line-height: 1.2; margin: 2px 0 0 !important; }
+  .admin-dashboard .users-table .joined-cell { grid-column: 1; grid-row: 2; font-size: 11px; color: var(--app-muted); line-height: 1.2; align-self: center; margin: 0 !important; }
   .admin-dashboard .users-table .joined-cell::before { content: 'Joined '; color: var(--app-muted); font-size: 11px; }
-  .admin-dashboard .users-table td:nth-child(2) { grid-column: 1; grid-row: 3; justify-self: start; align-self: center; margin: 2px 0 0 !important; }
-  .admin-dashboard .users-table td:nth-child(2)::before { display: none; }
-  .admin-dashboard .users-table .action-cell { grid-column: 2; grid-row: 2 / span 2; justify-self: end; align-self: center; padding: 0 !important; }
+  .admin-dashboard .users-table .action-cell { grid-column: 2; grid-row: 2; justify-self: end; align-self: center; padding: 0 !important; }
   .admin-dashboard .action-buttons { display: flex; align-items: center; gap: 5px; }
   .admin-dashboard .manage-button, .admin-dashboard .user-action-button { min-width: 0; min-height: 28px !important; padding: 0 8px !important; border-radius: 6px; font-size: 11px; }
   .admin-dashboard .users-table tbody tr:has(.empty-row) { display: block; }

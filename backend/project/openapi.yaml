@@ -1,0 +1,477 @@
+openapi: 3.0.3
+info:
+  title: Time Manager API
+  description: REST API documentation for Time Manager application.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000/api
+    description: Direct Phoenix server (dev)
+  - url: http://localhost/api
+    description: Reverse proxy Nginx (Docker Compose)
+
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: x-xsrf-token
+      description: Phoenix signed token received upon sign in
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: john_doe
+        email:
+          type: string
+          format: email
+          example: john.doe@example.com
+        full_name:
+          type: string
+          example: John Doe
+        role:
+          type: string
+          enum: [employee, manager, admin]
+          example: employee
+        status:
+          type: string
+          enum: [active, inactive]
+          example: active
+        manager_id:
+          type: integer
+          nullable: true
+          example: 3
+        joined_at:
+          type: string
+          format: date-time
+          example: '2026-10-15T08:30:00Z'
+
+    Clock:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        time:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-10-15T09:00:00Z'
+        status:
+          type: boolean
+          example: true
+        state:
+          type: string
+          enum: [working, break, off]
+          example: working
+
+    WorkingTime:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        start:
+          type: string
+          format: date-time
+          example: '2026-10-15T08:30:00Z'
+        end:
+          type: string
+          format: date-time
+          example: '2026-10-15T17:00:00Z'
+        kind:
+          type: string
+          enum: [work, break]
+          example: work
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Unauthorized
+
+paths:
+  /users/sign_in:
+    post:
+      summary: Sign in with username/email and password
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: john_doe
+                password:
+                  type: string
+                  example: MyPassword123!
+      responses:
+        '200':
+          description: Signed in successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Missing required fields
+        '401':
+          description: Invalid credentials or inactive account
+
+  /users/sign_up:
+    post:
+      summary: Register a new employee account
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user]
+              properties:
+                user:
+                  type: object
+                  required: [username, email, password]
+                  properties:
+                    username:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                    full_name:
+                      type: string
+                    password:
+                      type: string
+      responses:
+        '201':
+          description: User created
+        '422':
+          description: Validation error
+
+  /users/sign_out:
+    post:
+      summary: Sign out current user
+      tags: [Authentication]
+      security:
+        - TokenAuth: []
+      responses:
+        '200':
+          description: Signed out successfully
+
+  /users:
+    get:
+      summary: List users (filtered by permissions)
+      tags: [Users]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: query
+          name: email
+          schema:
+            type: string
+        - in: query
+          name: username
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+
+  /users/{id}:
+    get:
+      summary: Get user details by ID
+      tags: [Users]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User object
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+
+    patch:
+      summary: Update user attributes (role, status, manager_id, or name)
+      tags: [Users]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user:
+                  type: object
+      responses:
+        '200':
+          description: Updated user
+
+    delete:
+      summary: Delete user permanently (Admin only)
+      tags: [Users]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+
+  /users/unassigned:
+    get:
+      summary: List employees not assigned to any manager
+      tags: [Users]
+      security:
+        - TokenAuth: []
+      responses:
+        '200':
+          description: List of unassigned employees
+
+  /users/{id}/manager:
+    get:
+      summary: Get manager details of a user
+      tags: [Users]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Manager details
+
+  /clocks/{userID}:
+    get:
+      summary: Get current clock state for user
+      tags: [Clocks]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: userID
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Current clock object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Clock'
+    post:
+      summary: Update clock status (Clock in, Break, Clock out)
+      tags: [Clocks]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: userID
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clock:
+                  type: object
+                  properties:
+                    time:
+                      type: string
+                      format: date-time
+                    status:
+                      type: boolean
+                    state:
+                      type: string
+                      enum: [working, break, off]
+      responses:
+        '200':
+          description: Updated clock state
+
+  /workingtime/{userID}:
+    get:
+      summary: List working time intervals for user
+      tags: [Working Times]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: userID
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: start
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: end
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Working times list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkingTime'
+
+    post:
+      summary: Create completed work or break interval
+      tags: [Working Times]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: userID
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workingtime]
+              properties:
+                workingtime:
+                  type: object
+                  required: [start, end]
+                  properties:
+                    start:
+                      type: string
+                      format: date-time
+                    end:
+                      type: string
+                      format: date-time
+                    kind:
+                      type: string
+                      enum: [work, break]
+                      default: work
+      responses:
+        '201':
+          description: Created working time interval
+
+  /workingtime/{userID}/{id}:
+    get:
+      summary: Get single working time interval
+      tags: [Working Times]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: userID
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Working time entry
+
+  /workingtime/{id}:
+    put:
+      summary: Update working time interval
+      tags: [Working Times]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                workingtime:
+                  type: object
+      responses:
+        '200':
+          description: Updated working time entry
+
+    delete:
+      summary: Delete working time interval
+      tags: [Working Times]
+      security:
+        - TokenAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted

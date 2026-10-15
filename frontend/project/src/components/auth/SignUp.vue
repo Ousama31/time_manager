@@ -77,7 +77,6 @@
 <script>
 import api from '../../api';
 import AuthBrandPanel from './AuthBrandPanel.vue';
-import { hashPassword } from '../../utils/password';
 
 export default {
   name: 'SignUp',
@@ -99,13 +98,12 @@ export default {
             username: this.username,
             email: this.email,
             full_name: this.full_name,
-            password: await hashPassword(this.password)
+            password: this.password
           }
         });
         this.$router.push('/login');
       } catch (err) {
-        this.error = err.response?.data?.error ||
-          (err.name === 'PasswordHashingError' ? err.message : 'Registration failed');
+        this.error = err.response?.data?.error || 'Registration failed';
       }
     }
   }

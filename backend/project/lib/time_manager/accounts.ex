@@ -221,7 +221,7 @@ defmodule TimeManager.Accounts do
       )
 
     cond do
-      user && Bcrypt.verify_pass(password, user.password_hash) ->
+      user && verify_password(password, user.password_hash) ->
         if user.status == :active do
           token = Phoenix.Token.sign(TimeManagerWeb.Endpoint, "user_auth", user.id)
           {:ok, user, token}
@@ -236,6 +236,19 @@ defmodule TimeManager.Accounts do
         Bcrypt.no_user_verify()
         {:error, :unauthorized}
     end
+  end
+
+  # Existing users may have hashes of either the original password or the
+  # SHA-256 digest sent by older frontend builds. Accept both while new
+  # registrations return to storing a bcrypt hash of the original password.
+  defp verify_password(password, password_hash) do
+    Bcrypt.verify_pass(password, password_hash) or
+      Bcrypt.verify_pass(sha256_password(password), password_hash)
+  end
+
+  defp sha256_password(password) do
+    :crypto.hash(:sha256, password)
+    |> Base.encode16(case: :lower)
   end
 
   def verify_token(token) do

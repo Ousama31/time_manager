@@ -71,7 +71,6 @@
 <script>
 import api from '../../api';
 import AuthBrandPanel from './AuthBrandPanel.vue';
-import { hashPassword } from '../../utils/password';
 
 export default {
   name: 'SignIn',
@@ -88,7 +87,7 @@ export default {
       try {
         const response = await api.post('/users/sign_in', {
           username: this.username,
-          password: await hashPassword(this.password)
+          password: this.password
         });
 
         const data = response.data.data || response.data;
@@ -108,7 +107,7 @@ export default {
           this.error = 'Token missing in response';
         }
       } catch (err) {
-        this.error = (err.name === 'PasswordHashingError' && err.message) || err.response?.data?.error ||
+        this.error = err.response?.data?.error ||
           (err.response
             ? 'Sign in failed. Check your username and password.'
             : `Cannot reach the server at ${api.defaults.baseURL}. Check the API address and network connection.`);

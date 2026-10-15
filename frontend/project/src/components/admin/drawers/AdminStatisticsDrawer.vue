@@ -24,17 +24,17 @@
               <button v-if="statsUser.managerId" type="button" class="team-action drawer-team-action team-remove" :disabled="teamActionBusy" @click="updateTeamAssignment(statsUser, null)">{{ teamActionBusy ? 'Saving…' : 'Remove from team' }}</button>
               <div v-else class="drawer-team-add"><label for="stats-team-manager">Add to team</label><div><select id="stats-team-manager" :value="selectedStatsManagerId" @change="emitModel('selectedStatsManagerId', $event.target.value)"><option value="">Choose a team</option><option v-for="team in managerTeams" :key="team.manager.id" :value="team.manager.id">{{ team.manager.name }}</option></select><button type="button" class="team-action drawer-team-action" :disabled="teamActionBusy || !selectedStatsManagerId" @click="addStatsUserToTeam">{{ teamActionBusy ? 'Saving…' : 'Add to team' }}</button></div></div>
             </div>
-            <form class="message-compose" @submit.prevent="sendStatsMessage">
-              <h3>Send an email</h3>
-              <p>To {{ statsUser.email }}. Your email app chooses the sender account.</p>
-              <label for="admin-message-subject">Subject <span>Optional</span></label>
-              <input id="admin-message-subject" :value="messageSubject" @input="emitModel('messageSubject', $event.target.value)" type="text" maxlength="160" placeholder="A short subject" />
-              <label for="admin-message-body">Message</label>
-              <textarea id="admin-message-body" :value="messageBody" @input="emitModel('messageBody', $event.target.value)" required maxlength="5000" rows="4" placeholder="Write your message…"></textarea>
-              <p v-if="messageError" class="message-error" role="alert">{{ messageError }}</p>
-              <p v-if="messageSuccess" class="message-success" role="status">{{ messageSuccess }}</p>
-              <button class="team-action message-submit" type="submit" :disabled="!messageBody.trim()">Open email draft</button>
-            </form>
+            <EmailDraftForm
+              :subject="messageSubject"
+              :body="messageBody"
+              :recipient="statsUser.email"
+              id-prefix="admin-message"
+              :error="messageError"
+              :success="messageSuccess"
+              @update:subject="emitModel('messageSubject', $event)"
+              @update:body="emitModel('messageBody', $event)"
+              @send="$emit('send-message')"
+            />
           </div>
         </aside>
       </div>
@@ -42,10 +42,11 @@
 
 <script>
 import WeeklyHoursChart from '../../dashboard/WeeklyHoursChart.vue'
+import EmailDraftForm from '../../shared/EmailDraftForm.vue'
 import { formatMinutes } from '../../../utils/time'
 export default {
   name: 'AdminStatisticsDrawer',
-  components: { WeeklyHoursChart },
+  components: { WeeklyHoursChart, EmailDraftForm },
   props: {
     statsUser: { type: Object, default: null },
     isManagerStats: { type: Boolean, required: true },
@@ -72,7 +73,6 @@ export default {
     close() { this.$emit('close') },
     updateTeamAssignment(user, managerId) { this.$emit('update-team-assignment', user, managerId) },
     addStatsUserToTeam() { this.$emit('add-user-to-team') },
-    sendStatsMessage() { this.$emit('send-message') }
   }
 }
 </script>
@@ -90,17 +90,6 @@ export default {
 .admin-dashboard .drawer-team-add .drawer-team-action { flex: 0 0 auto; }
 .admin-dashboard .drawer-team-controls > .drawer-team-action { width: 100%; }
 .admin-dashboard .membership-error { margin: 0 0 10px; color: #a33636; font-size: 12px; }
-.admin-dashboard .message-compose { display: grid; gap: 8px; margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--app-border); }
-.admin-dashboard .message-compose h3 { margin: 0; color: var(--app-text); font-size: 14px; }
-.admin-dashboard .message-compose p { margin: 0; color: var(--app-muted); font-size: 11px; line-height: 1.5; }
-.admin-dashboard .message-compose label { margin-top: 3px; color: #414c5d; font-size: 11px; font-weight: 650; }
-.admin-dashboard .message-compose label span { color: var(--app-muted); font-weight: 400; }
-.admin-dashboard .message-compose input, .admin-dashboard .message-compose textarea { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--app-border); border-radius: 7px; color: var(--app-text); background: #fff; font: inherit; font-size: 12px; }
-.admin-dashboard .message-compose textarea { min-height: 96px; resize: vertical; }
-.admin-dashboard .message-compose input:focus, .admin-dashboard .message-compose textarea:focus { border-color: var(--app-accent); outline: 3px solid rgb(22 132 248 / 12%); }
-.admin-dashboard .message-compose .message-error, .admin-dashboard .message-compose .message-success { font-size: 11px; }
-.admin-dashboard .message-compose .message-error { color: #a33636; }.admin-dashboard .message-compose .message-success { color: #16734f; }
-.admin-dashboard .message-submit { justify-self: start; margin-top: 3px; }
 .admin-dashboard .statistics-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .admin-dashboard .statistics-summary--team { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .admin-dashboard .statistics-metric { display: grid; min-width: 0; gap: 8px; padding: 17px; border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-background); }

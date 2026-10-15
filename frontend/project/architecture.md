@@ -62,8 +62,7 @@ frontend/project/
 │   │   │   ├── AdminDashboard.vue          # Admin shell, navigation, and state coordination
 │   │   │   ├── sections/
 │   │   │   │   ├── AdminTeamsSection.vue    # Manager teams and unassigned employees
-│   │   │   │   ├── AdminUsersSection.vue    # Search, filters, user list, and account actions
-│   │   │   │   └── AdminProfileSection.vue  # Admin profile and logout view
+│   │   │   │   └── AdminUsersSection.vue    # Search, filters, user list, and account actions
 │   │   │   └── drawers/
 │   │   │       ├── AdminRoleEditorDrawer.vue # User role selection and confirmation
 │   │   │       └── AdminStatisticsDrawer.vue # User/team hours, assignment, and email panel
@@ -71,8 +70,7 @@ frontend/project/
 │   │   │   ├── ManagerDashboard.vue          # Manager shell, navigation, and state coordination
 │   │   │   ├── sections/
 │   │   │   │   ├── ManagerOverviewSection.vue # Live team status and work-hour summary
-│   │   │   │   ├── ManagerTeamSection.vue     # Assigned and unassigned employee lists
-│   │   │   │   └── ManagerProfileSection.vue  # Manager profile and logout view
+│   │   │   │   └── ManagerTeamSection.vue     # Assigned and unassigned employee lists
 │   │   │   └── drawers/
 │   │   │       └── ManagerMemberDetailsDrawer.vue # Member hours, status, team action, and email panel
 │   │   ├── employee/
@@ -80,8 +78,7 @@ frontend/project/
 │   │   │   └── sections/
 │   │   │       ├── EmployeeOverviewSection.vue # Clock controls and daily/weekly summaries
 │   │   │       ├── EmployeeTimesSection.vue    # Completed work and break records
-│   │   │       ├── EmployeeFeedbackSection.vue # Feedback email draft form
-│   │   │       └── EmployeeProfileSection.vue  # Employee profile and logout view
+│   │   │       └── EmployeeFeedbackSection.vue # Feedback email draft form
 │   │   ├── auth/
 │   │   │   ├── AuthBrandPanel.vue             # Shared sign-in/sign-up branding panel
 │   │   │   ├── SignIn.vue                     # Login form and local session setup
@@ -91,15 +88,17 @@ frontend/project/
 │   │   │   ├── AppShell.vue                   # Shared dashboard frame, sidebar, and mobile navigation
 │   │   │   └── WeeklyHoursChart.vue             # Reusable weekly work-hours chart
 │   │   └── shared/
-│   │       └── InitialAvatar.vue              # Initials avatar with tone variants
+│   │       ├── EmailDraftForm.vue              # Shared email draft form for manager and admin drawers
+│   │       ├── InitialAvatar.vue              # Initials avatar with tone variants
+│   │       └── ProfileSection.vue              # Shared profile and logout section for all roles
 │   ├── composables/
 │   │   ├── useAdminDashboard.js                # Admin profile, users, role/status, teams, and statistics operations
 │   │   ├── useEmployeeDashboard.js             # Employee profile, clock, intervals, manager, and cache operations
 │   │   └── useManagerDashboard.js              # Manager profile, team, member data, and assignment operations
 │   └── utils/
-│       ├── emailDraft.js                      # Validates and builds encoded mailto links
+│       ├── emailDraft.js                      # Builds encoded mailto links and opens draft results
 │       ├── identity.js                        # Display names, initials, and avatar tone helpers
-│       └── time.js                            # Shared date ranges, work duration, and date/time formatting
+│       └── time.js                            # Shared date ranges, durations, formatting, and weekly chart calculations
 └── ios/
     ├── .gitignore                             # Ignores Xcode and native build outputs
     ├── debug.xcconfig                         # Enables Capacitor debug mode for iOS

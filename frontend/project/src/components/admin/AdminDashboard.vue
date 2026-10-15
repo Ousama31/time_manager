@@ -16,7 +16,7 @@
 
         <AdminUsersSection v-if="activeSection === 'users'" :filtered-users="filteredUsers" :loading-users="loadingUsers" v-model:search-query="searchQuery" v-model:status-filter="statusFilter" v-model:role-filter="roleFilter" :user-id="userId" @open-statistics="openStatistics" @open-role-editor="openRoleEditor" @toggle-user-status="toggleUserStatus" @delete-user="deleteUser" />
 
-        <AdminProfileSection v-if="activeSection === 'profile'" :initials="initials" :display-name="displayName" :profile="profile" @logout="disconnect" />
+        <ProfileSection v-if="activeSection === 'profile'" variant="admin" role-label="Administrator" :initials="initials" :display-name="displayName" :profile="profile" @logout="disconnect" />
       </div>
     <AdminRoleEditorDrawer v-if="editingUser" :editing-user="editingUser" :role-options="roleOptions" v-model:selected-role="selectedRole" v-model:confirm-role-change="confirmRoleChange" :saving-role="savingRole" @close="closeRoleEditor" @save="saveRoleChange" />
     <AdminStatisticsDrawer
@@ -54,18 +54,18 @@ import { getDisplayName, getInitials } from '../../utils/identity'
 import AppShell from '../dashboard/AppShell.vue'
 import AdminTeamsSection from './sections/AdminTeamsSection.vue'
 import AdminUsersSection from './sections/AdminUsersSection.vue'
-import AdminProfileSection from './sections/AdminProfileSection.vue'
+import ProfileSection from '../shared/ProfileSection.vue'
 import AdminRoleEditorDrawer from './drawers/AdminRoleEditorDrawer.vue'
 import AdminStatisticsDrawer from './drawers/AdminStatisticsDrawer.vue'
-import { createEmailDraftUrl } from '../../utils/emailDraft'
-import { startOfLocalDay, startOfLocalWeek, sumWorkMinutes as sumMinutes, formatMinutes as formatWorkMinutes } from '../../utils/time'
+import { openEmailDraft } from '../../utils/emailDraft'
+import { startOfLocalDay, startOfLocalWeek, sumWorkMinutes as sumMinutes, buildWeeklyWorkBars } from '../../utils/time'
 import { useAdminDashboard } from '../../composables/useAdminDashboard'
 
 const adminDashboard = useAdminDashboard()
 
 export default {
   name: 'AdminDashboard',
-  components: { AppShell, AdminTeamsSection, AdminUsersSection, AdminProfileSection, AdminRoleEditorDrawer, AdminStatisticsDrawer },
+  components: { AppShell, AdminTeamsSection, AdminUsersSection, ProfileSection, AdminRoleEditorDrawer, AdminStatisticsDrawer },
   /** Create the reactive state for user lists, filters, selected drawers, and statistics requests. */
   data() {
     return {
@@ -176,19 +176,8 @@ export default {
     },
     /** Build daily work-minute values and chart heights for the open statistics panel. */
     statsWeekBars() {
-      const monday = startOfLocalWeek(this.now)
-      const days = Array.from({ length: 7 }, (_, index) => {
-        const dayStart = new Date(monday)
-        dayStart.setDate(monday.getDate() + index)
-        const dayEnd = new Date(dayStart)
-        dayEnd.setDate(dayStart.getDate() + 1)
-        const end = dayEnd > this.now ? this.now : dayEnd
-        const sources = this.isManagerStats ? this.statsTeamMembers : [{ records: this.statsRecords, clock: this.statsClock }]
-        const minutes = sources.reduce((total, member) => total + sumMinutes(member.records, dayStart, end, member.clock, this.now), 0)
-        return { key: index, label: new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(dayStart), minutes }
-      })
-      const max = Math.max(...days.map((day) => day.minutes), 1)
-      return days.map((day) => ({ ...day, height: day.minutes ? Math.max(8, Math.round(day.minutes / max * 100)) : 0 }))
+      const sources = this.isManagerStats ? this.statsTeamMembers : [{ records: this.statsRecords, clock: this.statsClock }]
+      return buildWeeklyWorkBars(sources, this.now)
     }
   },
   /** Load the administrator profile and workspace users when the view is mounted. */
@@ -286,22 +275,9 @@ export default {
     /** Open a prefilled email draft addressed to the selected user. */
     sendStatsMessage() {
       if (!this.statsUser || !this.messageBody.trim()) return
-      this.messageError = ''
-      this.messageSuccess = ''
-      try {
-        window.location.href = createEmailDraftUrl(this.statsUser.email, this.messageSubject, this.messageBody)
-        this.messageSuccess = 'Your email draft should open in your email app. Send it there to deliver your message.'
-      } catch (error) {
-        this.messageError = 'Could not open an email draft. Please check the recipient address and your email app.'
-      }
-    },
-    /** Format a minute count as hours and zero-padded minutes. */
-    formatMinutes(minutes) {
-      return formatWorkMinutes(minutes)
-    },
-    /** Map a display role to the CSS class used for its badge. */
-    roleClass(role) {
-      return { Admin: 'role-admin', Manager: 'role-manager', Employee: 'role-member' }[role] || 'role-member'
+      const result = openEmailDraft(this.statsUser.email, this.messageSubject, this.messageBody)
+      this.messageError = result.error
+      this.messageSuccess = result.success
     },
     /** Check whether a user row represents the signed-in administrator. */
     isCurrentUser(user) {

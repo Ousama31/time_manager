@@ -60,3 +60,21 @@ export function formatDate(value, options = { month: 'short', day: 'numeric', ye
   if (!value) return '—'
   return new Intl.DateTimeFormat(undefined, options).format(new Date(value))
 }
+
+/** Build daily chart values and normalized bar heights for a Monday-to-Sunday week. */
+export function buildWeeklyWorkBars(sources, now) {
+  const monday = startOfLocalWeek(now)
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const dayStart = new Date(monday)
+    dayStart.setDate(monday.getDate() + index)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setDate(dayStart.getDate() + 1)
+    const end = dayEnd > now ? now : dayEnd
+    const minutes = sources.reduce((total, source) => (
+      total + sumWorkMinutes(source.records || [], dayStart, end, source.clock, now)
+    ), 0)
+    return { key: index, label: new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(dayStart), minutes }
+  })
+  const max = Math.max(...days.map((day) => day.minutes), 1)
+  return days.map((day) => ({ ...day, height: day.minutes ? Math.max(8, Math.round(day.minutes / max * 100)) : 0 }))
+}

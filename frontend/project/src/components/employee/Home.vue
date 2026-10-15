@@ -36,7 +36,7 @@
       :feedback-success="feedbackSuccess"
       @send-feedback="sendFeedback"
     />
-    <EmployeeProfileSection v-else :initials="initials" :display-name="displayName" :profile="profile" @logout="disconnect" />
+    <ProfileSection v-else variant="employee" role-label="Employee" :initials="initials" :display-name="displayName" :profile="profile" @logout="disconnect" />
 
         <p v-if="activeTab !== 'home' && errorMessage" class="notice error-notice" role="alert">{{ errorMessage }}</p>
   </AppShell>
@@ -49,11 +49,11 @@ import { getDisplayName, getInitials } from '../../utils/identity'
 import EmployeeOverviewSection from './sections/EmployeeOverviewSection.vue'
 import EmployeeTimesSection from './sections/EmployeeTimesSection.vue'
 import EmployeeFeedbackSection from './sections/EmployeeFeedbackSection.vue'
-import EmployeeProfileSection from './sections/EmployeeProfileSection.vue'
+import ProfileSection from '../shared/ProfileSection.vue'
 import AppShell from '../dashboard/AppShell.vue'
 import offlineSync from '../../offlineSync'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
-import { createEmailDraftUrl } from '../../utils/emailDraft'
+import { openEmailDraft } from '../../utils/emailDraft'
 import { durationSeconds as calculateDurationSeconds, formatDuration as formatElapsedDuration, formatDate as formatLocalizedDate, formatTime as formatLocalizedTime } from '../../utils/time'
 import { useEmployeeDashboard } from '../../composables/useEmployeeDashboard'
 
@@ -64,7 +64,7 @@ const AUTO_CLOCK_OUT_SECONDS = configuredAutoClockOutSeconds > 0 ? configuredAut
 
 export default {
   name: 'Home',
-  components: { AppShell, EmployeeOverviewSection, EmployeeTimesSection, EmployeeFeedbackSection, EmployeeProfileSection },
+  components: { AppShell, EmployeeOverviewSection, EmployeeTimesSection, EmployeeFeedbackSection, ProfileSection },
   /** Create reactive profile, clock, work-time, feedback, and offline-sync state for the employee view. */
   data() {
     return {
@@ -222,8 +222,9 @@ export default {
       this.feedbackSuccess = ''
       try {
         const manager = await employeeDashboard.loadAssignedManager(this.userId)
-        window.location.href = createEmailDraftUrl(manager.email, this.feedbackSubject, this.feedbackBody)
-        this.feedbackSuccess = 'Your email draft should open in your email app. Send it there to deliver your message.'
+        const result = openEmailDraft(manager.email, this.feedbackSubject, this.feedbackBody, 'Could not open an email draft. Please check your email app and try again.')
+        this.feedbackError = result.error
+        this.feedbackSuccess = result.success
       } catch (error) {
         this.feedbackError = error.response?.data?.error || 'Could not open an email draft. Please check your email app and try again.'
       } finally {
@@ -481,7 +482,7 @@ export default {
 .employee-dashboard .topbar { position: sticky; top: 0; z-index: 3; display: flex; height: 76px; align-items: center; justify-content: space-between; padding: 0 clamp(28px, 4vw, 64px); border-bottom: 1px solid #e9ebf0; background: rgb(255 255 255 / 96%); backdrop-filter: blur(16px); }
 .employee-dashboard .topbar-caption { color: #7e8792; font-size: 14px; }
 .employee-dashboard .topbar-user { display: flex; align-items: center; gap: 12px; }
-.employee-dashboard .user-avatar, .employee-dashboard .profile-avatar { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 50%; color: #fff; background: var(--accent); font-size: 14px; font-weight: 700; }
+.employee-dashboard .user-avatar { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border-radius: 50%; color: #fff; background: var(--accent); font-size: 14px; font-weight: 700; }
 .employee-dashboard .topbar-user-copy { display: grid; gap: 2px; }
 .employee-dashboard .topbar-user-copy strong { font-size: 13px; }
 .employee-dashboard .topbar-user-copy small { color: #8c929b; font-size: 12px; }
@@ -513,7 +514,6 @@ export default {
 .employee-dashboard .large-tile { width: 58px; height: 58px; }
 .employee-dashboard .large-tile svg { width: 26px; height: 26px; }
 .employee-dashboard .schedule-empty-card h2 { margin: 18px 0 6px; font-size: 19px; }
-.employee-dashboard .profile-avatar { width: 62px; height: 62px; flex-basis: 62px; font-size: 19px; }
 .employee-dashboard .bottom-navigation { display: none; }
   .employee-dashboard .workspace-shell { display: block; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   .employee-dashboard .sidebar { display: none; }

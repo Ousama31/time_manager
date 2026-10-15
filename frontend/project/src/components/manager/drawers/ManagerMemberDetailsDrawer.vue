@@ -25,17 +25,18 @@
           </template>
           <p v-else class="membership-loading">Statistics are available after this employee joins your team.</p>
           <p v-if="membershipError" class="membership-error" role="alert">{{ membershipError }}</p>
-          <form v-if="selectedMember.role === 'Employee' && selectedMember.managerId" class="message-compose" @submit.prevent="sendMessage">
-            <h3>Send an email</h3>
-            <p>To {{ selectedMember.email }}. Your email app chooses the sender account.</p>
-            <label :for="`manager-message-subject-${selectedMember.id}`">Subject <span>Optional</span></label>
-            <input :id="`manager-message-subject-${selectedMember.id}`" :value="messageSubject" @input="emitModel('messageSubject', $event.target.value)" type="text" maxlength="160" placeholder="A short subject" />
-            <label :for="`manager-message-body-${selectedMember.id}`">Message</label>
-            <textarea :id="`manager-message-body-${selectedMember.id}`" :value="messageBody" @input="emitModel('messageBody', $event.target.value)" required maxlength="5000" rows="4" placeholder="Write your message…"></textarea>
-            <p v-if="messageError" class="message-error" role="alert">{{ messageError }}</p>
-            <p v-if="messageSuccess" class="message-success" role="status">{{ messageSuccess }}</p>
-            <button class="team-action message-submit" type="submit" :disabled="!messageBody.trim()">Open email draft</button>
-          </form>
+          <EmailDraftForm
+            v-if="selectedMember.role === 'Employee' && selectedMember.managerId"
+            :subject="messageSubject"
+            :body="messageBody"
+            :recipient="selectedMember.email"
+            :id-prefix="`manager-message-${selectedMember.id}`"
+            :error="messageError"
+            :success="messageSuccess"
+            @update:subject="emitModel('messageSubject', $event)"
+            @update:body="emitModel('messageBody', $event)"
+            @send="$emit('send-message')"
+          />
           <button v-if="selectedMember.role === 'Employee'" type="button" class="team-action drawer-team-action" :class="{ 'team-remove': selectedMember.managerId }" :disabled="teamActionBusy || selectedMemberLoading" @click="toggleMembership">{{ teamActionBusy ? 'Saving...' : selectedMember.managerId ? 'Remove from my team' : 'Add to my team' }}</button>
         </section>
       </div>
@@ -43,10 +44,11 @@
 
 <script>
 import WeeklyHoursChart from '../../dashboard/WeeklyHoursChart.vue'
+import EmailDraftForm from '../../shared/EmailDraftForm.vue'
 import { formatMinutes, formatTime as formatLocalizedTime } from '../../../utils/time'
 export default {
   name: 'ManagerMemberDetailsDrawer',
-  components: { WeeklyHoursChart },
+  components: { WeeklyHoursChart, EmailDraftForm },
   props: {
     selectedMember: { type: Object, default: null },
     selectedMemberLoading: { type: Boolean, required: true },
@@ -66,8 +68,7 @@ export default {
     formatMinutes,
     formatTime(value) { return formatLocalizedTime(value, { hour: 'numeric', minute: '2-digit' }) },
     close() { this.$emit('close') },
-    toggleMembership() { this.$emit('toggle-membership') },
-    sendMessage() { this.$emit('send-message') }
+    toggleMembership() { this.$emit('toggle-membership') }
   }
 }
 </script>
